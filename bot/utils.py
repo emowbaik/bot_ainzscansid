@@ -3,6 +3,8 @@ import json
 from dateutil import parser
 import discord
 import logging
+from dateutil import parser
+import re
 
 # Muat data dari file JSON untuk roles
 with open('roles.json') as f:
@@ -17,17 +19,26 @@ def simplify_timestamp(timestamp):
     dt = parser.parse(timestamp)
     return dt.strftime('%d %B %Y, %H:%M %p')
 
+# Fungsi untuk mengekstrak nama seri dari judul
+def extract_series_name(title):
+    # Misalnya, kita anggap nama seri adalah bagian dari judul sebelum "Chapter" atau "Episode"
+    match = re.match(r'^(.*?)(?:Chapter \d+|Episode \d+)?$', title, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return title
+
 # Fungsi untuk menentukan role mention berdasarkan title
 def get_role_mention(title):
+    series_name = extract_series_name(title)
     for entry in entries_data['entries']:
-        if entry['title'].lower() in title.lower():
+        if entry['title'].lower() == series_name.lower():
             return entry['role']
     return ""
 
 # Fungsi untuk mengirim pesan ke Discord dengan dua tombol
 async def send_to_discord(bot, title, link, published, author):
     # Periksa apakah title ada di JSON
-    if not any(entry['title'].lower() == title.lower() for entry in entries_data['entries']):
+    if not any(entry['title'].lower() == extract_series_name(title).lower() for entry in entries_data['entries']):
         logging.info(f"Title '{title}' not found in roles.json. Skipping...")
         return
     
