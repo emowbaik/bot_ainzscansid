@@ -1,0 +1,364 @@
+{
+    "entries": [
+        {
+            "id": "1",
+            "title": "Leveling In The Future",
+            "role": "<@&1215946950206029834><@&1176850935117516840>",
+            "category": "LITF"
+        },
+        {
+            "id": "2",
+            "title": "God's Contempt",
+            "role": "<@&1176873600838541413><@&1176850935117516840>",
+            "category": "GS"
+        },
+        {
+            "id": "3",
+            "title": "Starting With Awakening in the Classic of Mountains and Seas",
+            "role": "<@&1212319247158476830><@&1176850935117516840>",
+            "category": "SWAITCOMAS"
+        },
+        {
+            "id": "4",
+            "title": "Regenerate Top Players",
+            "role": "<@&1214896682899218443><@&1176850935117516840>",
+            "category": "RTP"
+        },
+        {
+            "id": "5",
+            "title": "Myriad Tribes Invasion: Rearguard’s Resolute Unity",
+            "role": "<@&1205760207024689162><@&1176850935117516840>",
+            "category": "MTI:RRU"
+        },
+        {
+            "id": "6",
+            "title": "I Became a Part Time Employee for Gods",
+            "role": "<@&1215946646345482310><@&1176850935117516840>",
+            "category": "IBAPTEFG"
+        },
+        {
+            "id": "7",
+            "title": "Disastrous Necromancer",
+            "role": "<@&1176879617043353723><@&1176850935117516840>",
+            "category": "DN"
+        },
+        {
+            "id": "8",
+            "title": "My Wife and I Dominate the Three Realms",
+            "role": "<@&1228243985328242749><@&1176850935117516840>",
+            "category": "MWAIDTTR"
+        },
+        {
+            "id": "9",
+            "title": "Maxed Strength Stats Necromancer",
+            "role": "<@&1176873839209226270><@&1176850935117516840>",
+            "category": "MSTN"
+        },
+        {
+            "id": "10",
+            "title": "I Became The Game’s Biggest Villain",
+            "role": "<@&1185969768629547141><@&1176850935117516840>",
+            "category": "IBTGBV"
+        },
+        {
+            "id": "11",
+            "title": "The Great Villain Senior Brother and All of His Yandere Junior Sisters",
+            "role": "<@&1176879913966510250><@&1176850935117516840>",
+            "category": "TGVSBAAOHYJS"
+        },
+        {
+            "id": "12",
+            "title": "I Became The King by Scavenging",
+            "role": "<@&1211743160083152926><@&1176850935117516840>",
+            "category": "IBTKBS"
+        },
+        {
+            "id": "13",
+            "title": "The Betrayal of Shadow",
+            "role": "<@&1221538474667147385><@&1176850935117516840>",
+            "category": "TBOS"
+        },
+        {
+            "id": "14",
+            "title": "My Disciple Became The Great Demon Empress?!",
+            "role": "<@&1206643057399828491><@&1176850935117516840>",
+            "category": "MDBTGDE?!"
+        },
+        {
+            "id": "15",
+            "title": "Eternal Club",
+            "role": "<@&1215584851781226536><@&1176850935117516840>",
+            "category": "EC"
+        },
+        {
+            "id": "16",
+            "title": "Soul Slayer Chronicles",
+            "role": "<@&1214896387355971665><@&1176850935117516840>",
+            "category": "SSC"
+        },
+        {
+            "id": "17",
+            "title": "The Nebula's Civilization",
+            "role": "<@&1183812217926320263><@&1176850935117516840>",
+            "category": "TNC"
+        },
+        {
+            "id": "18",
+            "title": "Brave X Devil Queen",
+            "role": "<@&1176878518257332304><@&1176850935117516840>",
+            "category": "BXD"
+        },
+        {
+            "id": "19",
+            "title": "I Have Billions of Years of Cultivation",
+            "role": "<@&1206642742311002132><@&1176850935117516840>",
+            "category": "IHBOYOC"
+        },
+        {
+            "id": "20",
+            "title": "SSS-level Paladin Who Breaks All Logic",
+            "role": "<@&1191201522877476904><@&1176850935117516840>",
+            "category": "SLPWBAL"
+        },
+        {
+            "id": "21",
+            "title": "The Genius Assassin Who Takes it All",
+            "role": "<@&1178030917307093183><@&1176850935117516840>",
+            "category": "TGAWTIA"
+        },
+        {
+            "id": "22",
+            "title": "The Game That I Came From",
+            "role": "<@&1176880644492640356><@&1176850935117516840>",
+            "category": "TGTICF"
+        },
+        {
+            "id": "23",
+            "title": "I’m Actually The Final Boss",
+            "role": "<@&1176878409209618492><@&1176850935117516840>",
+            "category": "IATFB"
+        },
+        {
+            "id": "24",
+            "title": "Return Of The Martial Arts Genius",
+            "role": "<@&1176880725304287265><@&1176850935117516840>",
+            "category": "ROTMAG"
+        },
+        {
+            "id": "25",
+            "title": "Battle Armor Academy",
+            "role": "<@&1205763374927970314><@&1176850935117516840>",
+            "category": "BAA"
+        },
+        {
+            "id": "26",
+            "title": "Infinite Level up in Murim",
+            "role": "<@&1176879702120616097><@&1176850935117516840>",
+            "category": "ILUIM"
+        },
+        {
+            "id": "27",
+            "title": "Apocalypse Super Farm",
+            "role": "<@&1176880437323366410><@&1176850935117516840>",
+            "category": "ASF"
+        },
+        {
+            "id": "28",
+            "title": "All Football Talents Are Mine",
+            "role": "<@&1176873195362582569><@&1176850935117516840>",
+            "category": "AFTAM"
+        },
+        {
+            "id": "29",
+            "title": "Devious Son Of Heaven",
+            "role": "<@&1176873930976399460><@&1176850935117516840>",
+            "category": "DSOH"
+        },
+        {
+            "id": "30",
+            "title": "I Am The Strongest Boss",
+            "role": "<@&1212433298643746898><@&1176850935117516840>",
+            "category": "IATSB"
+        },
+        {
+            "id": "31",
+            "title": "I Love the Demon Lord So Much That Even My Female Disciples Want to Kill Me",
+            "role": "<@&1205763521552588820><@&1176850935117516840>",
+            "category": "ILTDLSMTEMFDWTKM"
+        },
+        {
+            "id": "32",
+            "title": "I Am the Virus Monarch",
+            "role": "<@&1209382150499995658><@&1176850935117516840>",
+            "category": "IATVM"
+        },
+        {
+            "id": "33",
+            "title": "I Become Invincible Black Dragon Boss At The Start",
+            "role": "<@&1205763838448762942><@&1176850935117516840>",
+            "category": "IBIBDBATS"
+        },
+        {
+            "id": "34",
+            "title": "Apocalypse Sword God",
+            "role": "<@&1205764155383222332><@&1176850935117516840>",
+            "category": "ASG"
+        },
+        {
+            "id": "35",
+            "title": "I Randomly Have A New Career Every Week",
+            "role": "<@&1216546278545031238><@&1176850935117516840>",
+            "category": "IRHANCEW"
+        },
+        {
+            "id": "36",
+            "title": "King of Snow",
+            "role": "<@&1209382464233930802><@&1176850935117516840>",
+            "category": "KOS"
+        },
+        {
+            "id": "37",
+            "title": "The Apex of Dragon Mastery",
+            "role": "<@&1205763206828789770><@&1176850935117516840>",
+            "category": "TAODM"
+        },
+        {
+            "id": "38",
+            "title": "Max Talent Player",
+            "role": "<@&1205553098597072906><@&1176850935117516840>",
+            "category": "MTP"
+        },
+        {
+            "id": "39",
+            "title": "Chronicles Of The Jungle Sovereign",
+            "role": "<@&1218017659313193131><@&1176850935117516840>",
+            "category": "COTJS"
+        },
+        {
+            "id": "40",
+            "title": "Omnipotent Warrior",
+            "role": "<@&1176864877525078136><@&1176850935117516840>",
+            "category": "OW"
+        },
+        {
+            "id": "41",
+            "title": "The Last All-Knowing Man Collected Trillions of Stuff from Day One",
+            "role": "<@&1209382771475353660><@&1176850935117516840>",
+            "category": "TLALL"
+        },
+        {
+            "id": "42",
+            "title": "The Wretched",
+            "role": "<@&1205763000288681984><@&1176850935117516840>",
+            "category": "TW"
+        },
+        {
+            "id": "43",
+            "title": "I’m Sorry, My Skills Max Out by Themselves",
+            "role": "<@&1205759841927299122><@&1176850935117516840>",
+            "category": "IS,MSMOBT"
+        },
+        {
+            "id": "44",
+            "title": "Omniscent Cultivator",
+            "role": "<@&1182715251486113832><@&1176850935117516840>",
+            "category": "OC"
+        },
+        {
+            "id": "45",
+            "title": "Overpowered Healer",
+            "role": "<@&1176867987584720956><@&1176850935117516840>",
+            "category": "IHBU"
+        },
+        {
+            "id": "46",
+            "title": "My Unbeatable Passive Skill Lets Me Deal Massive Damage!",
+            "role": "<@&1179296089229230180><@&1176850935117516840>",
+            "category": "MUPSLMDMD"
+        },
+        {
+            "id": "47",
+            "title": "I Created an Urban Legend!",
+            "role": "<@&1176872301728387132><@&1176850935117516840>",
+            "category": "ICAUL"
+        },
+        {
+            "id": "48",
+            "title": "Let Me Game in Peace",
+            "role": "<@&1176850935117516840>",
+            "category": ""
+        },
+        {
+            "id": "49",
+            "title": "Clumsy Me Rising in the Villain’s Camp I am the King of the Game",
+            "role": "<@&1182715155931471872><@&1176850935117516840>",
+            "category": "CMRITVCIATKOTG"
+        },
+        {
+            "id": "50",
+            "title": "Moon Slayer",
+            "role": "<@&1176880090169225266><@&1176850935117516840>",
+            "category": "MS"
+        },
+        {
+            "id": "51",
+            "title": "Catastrophic Overlord",
+            "role": "<@&1205761190735904770><@&1176850935117516840>",
+            "category": "CO"
+        },
+        {
+            "id": "52",
+            "title": "Catastrophic Priest",
+            "role": "<@&1228024390080266372><@&1176850935117516840>",
+            "category": "CP"
+        },
+        {
+            "id": "53",
+            "title": "Curse Cultivation",
+            "role": "<@&1246831169119453395><@&1176850935117516840>",
+            "category": "CC"
+        },
+        {
+            "id": "54",
+            "title": "Overlord of Insect",
+            "role": "<@&1223736970061021204><@&1176850935117516840>",
+            "category": "OOI"
+        },
+        {
+            "id": "55",
+            "title": "Unbeatable Sword Master Cultivator (Versatile Sword Cultivator)",
+            "role": "<@&1205759570702635060><@&1176850935117516840>",
+            "category": "USMC"
+        },
+        {
+            "id": "56",
+            "title": "The Carp's Divine Evolution",
+            "role": "<@&1234137503783719006><@&1176850935117516840>",
+            "category": "TCDE"
+        },
+        {
+            "id": "58",
+            "title": "Infinite Devouring Flower",
+            "role": "<@&1228024304164147281><@&1176850935117516840>",
+            "category": "IDF"
+        },
+        {
+            "id": "59",
+            "title": "Hyper Blitz: Fury Unleashed",
+            "role": "<@&1221538747817001110><@&1176850935117516840>",
+            "category": "HBFU"
+        },
+        {
+            "id": "60",
+            "title": "From Goblin to Goblin God",
+            "role": "<@&1176850935117516840>",
+            "category": ""
+        },
+        {
+            "id": "61",
+            "title": "My Disciples Cultivate, While I Slack Off!",
+            "role": "<@&1176878885070180393><@&1176850935117516840>",
+            "category": "MDCWISO"
+        }
+    ]
+}
