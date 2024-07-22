@@ -50,8 +50,8 @@ async def send_to_discord(bot, title, link, published, author):
     embed.set_footer(text=f"Posted by {author} • {simplified_time}")
 
     # Set image
-    image_url = "https://images-ext-1.discordapp.net/external/vEu93IBiGC0IkfvvM8qEG1BQAMW48Yb7hxPohiY4Kzo/https/blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgM3omq_vH_U9a7yb-2B6bPkxkunGCB-GzGc6kY-KtACdDZ1EkzRNX4Ghr1yWU4kpPGfbUPIaxHuOe6S6rZ4X8RIHC7sU5V-s9o_1J83WR-0NwfPrbOJn05RwGxCGmzjGTsLwpKXg_S9e5LM7PbIyvOjK2eUrR6iGHK_928fBJdyyF1np_xUbAMkLAd/s1600/20230415_100900.jpg?format=webp&width=1022&height=377"
-    embed.set_image(url=image_url)  # Gambar besar di dalam embed
+    # image_url = "https://images-ext-1.discordapp.net/external/vEu93IBiGC0IkfvvM8qEG1BQAMW48Yb7hxPohiY4Kzo/https/blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgM3omq_vH_U9a7yb-2B6bPkxkunGCB-GzGc6kY-KtACdDZ1EkzRNX4Ghr1yWU4kpPGfbUPIaxHuOe6S6rZ4X8RIHC7sU5V-s9o_1J83WR-0NwfPrbOJn05RwGxCGmzjGTsLwpKXg_S9e5LM7PbIyvOjK2eUrR6iGHK_928fBJdyyF1np_xUbAMkLAd/s1600/20230415_100900.jpg?format=webp&width=1022&height=377"
+    # embed.set_image(url=image_url)  # Gambar besar di dalam embed
 
     # Buat tombol
     button1 = discord.ui.Button(label="Baca Sekarang", url=link, style=discord.ButtonStyle.link)
