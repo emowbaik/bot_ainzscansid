@@ -320,7 +320,7 @@
         },
         {
             "id": "54",
-            "title": "Overlord of Insect",
+            "title": ">Overlord of Insects",
             "role": "<@&1223736970061021204><@&1176850935117516840>",
             "category": "OOI"
         },
@@ -359,6 +359,12 @@
             "title": "My Disciples Cultivate, While I Slack Off!",
             "role": "<@&1176878885070180393><@&1176850935117516840>",
             "category": "MDCWISO"
+        },
+        {
+            "id": "62",
+            "title": "Frozen Frontiers",
+            "role": "<@&1176850935117516840>",
+            "category": ""
         }
     ]
 }

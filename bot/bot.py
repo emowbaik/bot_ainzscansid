@@ -5,6 +5,7 @@ import discord
 import feedparser
 import pymysql
 import asyncio
+from datetime import datetime
 from discord.ext import commands, tasks
 from .utils import send_to_discord
 from .logging_config import setup_logging
@@ -27,29 +28,61 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 # Fungsi untuk mendapatkan koneksi database
 def get_db_connection():
-    return pymysql.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
-        database=os.getenv('DB_NAME')
-    )
+    try:
+        conn = pymysql.connect(
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD'),
+            database=os.getenv('DB_NAME')
+        )
+        logging.info("Database connection successful")
+        return conn
+    except pymysql.MySQLError as e:
+        logging.error(f"Database connection failed: {e}")
+        return None
+
+# Fungsi untuk memformat tanggal
+def format_datetime(date_string):
+    dt = datetime.strptime(date_string, '%a, %d %b %Y %H:%M:%S %z')
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 # Fungsi untuk mendapatkan last_entry_id dari database
 def get_last_entry_id():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT last_entry_id FROM feed WHERE id=1')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else None
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT entry_id FROM entries ORDER BY published DESC LIMIT 1')
+            result = cursor.fetchone()
+            logging.info(f"Fetched last_entry_id: {result[0] if result else 'None'}")
+            return result[0] if result else None
+        except pymysql.MySQLError as e:
+            logging.error(f"Failed to fetch last_entry_id: {e}")
+        finally:
+            conn.close()
+    else:
+        logging.error("No database connection available")
+    return None
 
-# Fungsi untuk menyimpan last_entry_id ke database
-def set_last_entry_id(entry_id):
+# Fungsi untuk menyimpan entry_id dan published ke database
+def set_last_entry_id(entry_id, published):
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('INSERT INTO feed (id, last_entry_id) VALUES (1, %s) ON DUPLICATE KEY UPDATE last_entry_id=%s', (entry_id, entry_id))
-    conn.commit()
-    conn.close()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            formatted_published = format_datetime(published)
+            cursor.execute(
+                'INSERT INTO entries (entry_id, published) VALUES (%s, %s) ON DUPLICATE KEY UPDATE published=%s',
+                (entry_id, formatted_published, formatted_published)
+            )
+            conn.commit()
+            logging.info(f"Set entry_id {entry_id} with published date {formatted_published}")
+        except pymysql.MySQLError as e:
+            logging.error(f"Failed to save entry_id {entry_id} to database: {e}")
+        finally:
+            conn.close()
+    else:
+        logging.error("No database connection available")
 
 # Fungsi untuk memeriksa feed dan mengirim update
 @tasks.loop(minutes=1)
@@ -64,7 +97,7 @@ async def check_feed():
         new_entry = new_feed.entries[0]
 
         if new_entry.id != last_entry_id:
-            set_last_entry_id(new_entry.id)
+            set_last_entry_id(new_entry.id, new_entry.published)
             title = new_entry.title
             link = new_entry.link
             author = new_entry.author
@@ -83,7 +116,8 @@ async def check_feed():
 @bot.event
 async def on_ready():
     logging.info(f'Logged in as {bot.user.name}')
-    check_feed.start()  # Mulai pengecekan feed secara berkala
+    if not check_feed.is_running():
+        check_feed.start()  # Mulai pengecekan feed secara berkala jika belum berjalan
 
 @bot.command(name='sendall')
 async def send_all_entries(ctx):
@@ -95,19 +129,12 @@ async def send_all_entries(ctx):
             author = entry.author if 'author' in entry else 'Unknown'
             published = entry.published if 'published' in entry else 'Unknown'
 
-            # Log info tentang entry yang dikirim
-            logging.info(f"Processing entry: {title}")
-
-            # Periksa apakah title ada di JSON
-            if any(e['title'].lower() == title.lower() for e in entries_data['entries']):
-                await send_to_discord(bot, title, link, published, author)
-                logging.info(f"Successfully sent notification for: {title}")
+            await send_to_discord(bot, title, link, published, author)
+            logging.info(f"Successfully sent notification for: {title}")
 
         await ctx.send("All entries have been sent to Discord.")
-    except asyncio.TimeoutError:
-        logging.error('Timeout while fetching the feed')
     except Exception as e:
-        logging.error(f"An error occurred: {e}")
+        await ctx.send(f"An error occurred: {e}")
 
 async def fetch_feed(url):
     return feedparser.parse(url)
