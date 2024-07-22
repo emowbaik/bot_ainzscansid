@@ -365,6 +365,12 @@
             "title": "Frozen Frontiers",
             "role": "<@&1264952046981877833><@&1176850935117516840>",
             "category": "FF"
+        },
+        {
+            "id": "63",
+            "title": "I Can Evolve Everything",
+            "role": "<@&1264952334677577848><@&1176850935117516840>",
+            "category": "ICEE"
         }
     ]
 }

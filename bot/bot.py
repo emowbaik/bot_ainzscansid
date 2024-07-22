@@ -85,7 +85,7 @@ def set_last_entry_id(entry_id, published):
         logging.error("No database connection available")
 
 # Fungsi untuk memeriksa feed dan mengirim update
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=10)
 async def check_feed():
     try:
         logging.info('Checking feed...')
