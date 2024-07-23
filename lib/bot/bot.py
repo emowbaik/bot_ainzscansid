@@ -21,13 +21,30 @@ setup_logging()
 with open('roles.json') as f:
     entries_data = json.load(f)
 
-# Inisialisasi bot
+# Inisialisasi bot dengan AutoShardedBot
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.AutoShardedBot(command_prefix='!', intents=intents)
 
 # Setup custom commands
 setup_commands(bot)
+
+# Fungsi untuk mengambil feed menggunakan run_in_executor
+async def fetch_feed(url):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, feedparser.parse, url)
+
+# Fungsi untuk mengambil feed dengan retry logic
+async def fetch_feed_with_retry(url, retries=3, delay=5):
+    for attempt in range(retries):
+        try:
+            return await fetch_feed(url)
+        except Exception as e:
+            logging.error(f"Error fetching feed (attempt {attempt + 1}): {e}")
+            if attempt < retries - 1:
+                await asyncio.sleep(delay)
+            else:
+                raise
 
 # Fungsi untuk memeriksa feed dan mengirim update
 @tasks.loop(minutes=10)
@@ -36,7 +53,7 @@ async def check_feed():
         logging.info('Checking feed...')
         
         # Set a timeout for fetching the feed
-        new_feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
+        new_feed = await asyncio.wait_for(fetch_feed_with_retry(os.getenv('RSS_URL')), timeout=60)
         
         last_entry_id = get_last_entry_id()
         new_entry = new_feed.entries[0]
@@ -61,14 +78,10 @@ async def check_feed():
     except Exception as e:
         logging.error(f"Error checking feed: {e}")
 
-
 @bot.event
 async def on_ready():
     logging.info(f'Logged in as {bot.user.name}')
     if not check_feed.is_running():
         check_feed.start()  # Mulai pengecekan feed secara berkala jika belum berjalan
-
-async def fetch_feed(url):
-    return feedparser.parse(url)
 
 bot.run(os.getenv('DISCORD_TOKEN'))
