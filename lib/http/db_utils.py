@@ -2,11 +2,13 @@ import logging
 import pymysql
 from datetime import datetime
 from lib.config.config import get_db_connection
+from dateutil import parser
 
 # Fungsi untuk memformat tanggal
 def format_datetime(date_string):
     try:
-        dt = datetime.strptime(date_string, '%a, %d %b %Y %H:%M:%S %z')
+        # Parsing menggunakan dateutil.parser yang mendukung berbagai format tanggal
+        dt = parser.parse(date_string)
     except ValueError:
         logging.error(f"Date format error: {date_string}")
         return None

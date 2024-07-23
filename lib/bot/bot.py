@@ -47,7 +47,7 @@ async def fetch_feed_with_retry(url, retries=3, delay=5):
                 raise
 
 # Fungsi untuk memeriksa feed dan mengirim update
-@tasks.loop(minutes=10)
+@tasks.loop(minutes=1)
 async def check_feed():
     try:
         logging.info('Checking feed...')

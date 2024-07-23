@@ -30,16 +30,20 @@ def extract_series_name(title):
 # Fungsi untuk menentukan role mention berdasarkan title
 def get_role_mention(title):
     series_name = extract_series_name(title)
+    logging.info(f"Extracted series name: {series_name}")
     for entry in entries_data['entries']:
         if entry['title'].lower() == series_name.lower():
+            logging.info(f"Found matching series: {entry['title']} with role: {entry['role']}")
             return entry['role']
+    logging.info(f"No matching series found for: {series_name}")
     return ""
 
 # Fungsi untuk mengirim pesan ke Discord dengan dua tombol
 async def send_to_discord(bot, title, link, published, author):
     # Periksa apakah title ada di JSON
-    if not any(entry['title'].lower() == extract_series_name(title).lower() for entry in entries_data['entries']):
-        logging.info(f"Title '{title}' not found in roles.json. Skipping...")
+    series_name = extract_series_name(title)
+    if not any(entry['title'].lower() == series_name.lower() for entry in entries_data['entries']):
+        logging.info(f"Title '{series_name}' not found in roles.json. Skipping...")
         return
     
     simplified_time = simplify_timestamp(published)

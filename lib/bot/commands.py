@@ -32,7 +32,7 @@ def setup(bot):
     @bot.command(name='send')
     async def send_entry(ctx, index: int):
         try:
-            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
+            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
             entries = feed.entries[:10]  # Ambil 10 artikel terbaru
 
             if index < 1 or index > len(entries):
@@ -56,7 +56,7 @@ def setup(bot):
     @bot.command(name='sendall')
     async def send_all_entries(ctx):
         try:
-            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
+            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
             entries = feed.entries[:10]  # Ambil 10 artikel terbaru
 
             if not entries:
