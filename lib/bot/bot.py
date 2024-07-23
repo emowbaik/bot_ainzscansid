@@ -42,11 +42,12 @@ async def check_feed():
         new_entry = new_feed.entries[0]
 
         if new_entry.id != last_entry_id:
-            set_last_entry_id(new_entry.id, new_entry.published)
             title = new_entry.title
             link = new_entry.link
             author = new_entry.author
             published = new_entry.published
+
+            set_last_entry_id(new_entry.id, published, title, link, author)
 
             # Log info tentang entry baru
             logging.info(f"New entry found: {title}")
@@ -59,6 +60,7 @@ async def check_feed():
         logging.error('Timeout while fetching the feed')
     except Exception as e:
         logging.error(f"Error checking feed: {e}")
+
 
 @bot.event
 async def on_ready():

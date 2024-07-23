@@ -30,8 +30,8 @@ def get_last_entry_id():
         logging.error("No database connection available")
     return None
 
-# Fungsi untuk menyimpan entry_id dan published ke database
-def set_last_entry_id(entry_id, published):
+# Fungsi untuk menyimpan entry_id, published, title, link, dan author ke database
+def set_last_entry_id(entry_id, published, title, link, author):
     conn = get_db_connection()
     if conn:
         try:
@@ -39,11 +39,15 @@ def set_last_entry_id(entry_id, published):
             formatted_published = format_datetime(published)
             if formatted_published:
                 cursor.execute(
-                    'INSERT INTO entries (entry_id, published) VALUES (%s, %s) ON DUPLICATE KEY UPDATE published=%s',
-                    (entry_id, formatted_published, formatted_published)
+                    '''
+                    INSERT INTO entries (entry_id, published, title, link, author) 
+                    VALUES (%s, %s, %s, %s, %s) 
+                    ON DUPLICATE KEY UPDATE published=%s, title=%s, link=%s, author=%s
+                    ''',
+                    (entry_id, formatted_published, title, link, author, formatted_published, title, link, author)
                 )
                 conn.commit()
-                logging.info(f"Set entry_id {entry_id} with published date {formatted_published}")
+                logging.info(f"Set entry_id {entry_id} with published date {formatted_published}, title {title}, link {link}, and author {author}")
         except pymysql.MySQLError as e:
             logging.error(f"Failed to save entry_id {entry_id} to database: {e}")
         finally:
