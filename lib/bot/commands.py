@@ -12,7 +12,7 @@ async def fetch_feed(url):
     return feedparser.parse(url)
 
 def setup(bot):
-    @bot.command(name='ls')
+    @bot.command(name='list')
     async def list_entries(ctx):
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
