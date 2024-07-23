@@ -43,11 +43,7 @@ def get_db_connection():
 
 # Fungsi untuk memformat tanggal
 def format_datetime(date_string):
-    try:
-        dt = datetime.strptime(date_string, '%a, %d %b %Y %H:%M:%S %Z')
-    except ValueError:
-        logging.error(f"Date format error: {date_string}")
-        return None
+    dt = datetime.strptime(date_string, '%a, %d %b %Y %H:%M:%S %z')
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 # Fungsi untuk mendapatkan last_entry_id dari database
@@ -75,13 +71,12 @@ def set_last_entry_id(entry_id, published):
         try:
             cursor = conn.cursor()
             formatted_published = format_datetime(published)
-            if formatted_published:
-                cursor.execute(
-                    'INSERT INTO entries (entry_id, published) VALUES (%s, %s) ON DUPLICATE KEY UPDATE published=%s',
-                    (entry_id, formatted_published, formatted_published)
-                )
-                conn.commit()
-                logging.info(f"Set entry_id {entry_id} with published date {formatted_published}")
+            cursor.execute(
+                'INSERT INTO entries (entry_id, published) VALUES (%s, %s) ON DUPLICATE KEY UPDATE published=%s',
+                (entry_id, formatted_published, formatted_published)
+            )
+            conn.commit()
+            logging.info(f"Set entry_id {entry_id} with published date {formatted_published}")
         except pymysql.MySQLError as e:
             logging.error(f"Failed to save entry_id {entry_id} to database: {e}")
         finally:
