@@ -1,10 +1,12 @@
 import os
 import json
+from datetime import datetime
 from dateutil import parser
 import discord
 import logging
-from dateutil import parser
 import re
+from fuzzywuzzy import fuzz
+from lib.http.db_utils import save_pending_entry
 
 # Muat data dari file JSON untuk roles
 with open('roles.json') as f:
@@ -16,8 +18,15 @@ def hex_to_int(hex_color):
 
 # Fungsi untuk menyederhanakan timestamp
 def simplify_timestamp(timestamp):
-    dt = parser.parse(timestamp)
-    return dt.strftime('%d %B %Y, %H:%M %p')
+    # Jika timestamp adalah objek datetime, ubah menjadi string
+    if isinstance(timestamp, datetime):
+        timestamp = timestamp.isoformat()  # Mengubah datetime menjadi string ISO
+    try:
+        dt = parser.parse(timestamp)
+        return dt.strftime('%d %B %Y, %H:%M %p')
+    except Exception as e:
+        logging.error(f"Failed to simplify timestamp: {e}")
+        return "Invalid date"
 
 # Fungsi untuk mengekstrak nama seri dari judul
 def extract_series_name(title):
@@ -39,11 +48,11 @@ def get_role_mention(title):
     return ""
 
 # Fungsi untuk mengirim pesan ke Discord dengan dua tombol
-async def send_to_discord(bot, title, link, published, author):
-    # Periksa apakah title ada di JSON
-    series_name = extract_series_name(title)
-    if not any(entry['title'].lower() == series_name.lower() for entry in entries_data['entries']):
-        logging.info(f"Title '{series_name}' not found in roles.json. Skipping...")
+async def send_to_discord(bot, entry_id, title, link, published, author):
+    role_mention = get_role_mention(title)
+    
+    if not role_mention:
+        save_pending_entry(entry_id, published, title, link, author)
         return
     
     simplified_time = simplify_timestamp(published)
@@ -53,23 +62,14 @@ async def send_to_discord(bot, title, link, published, author):
     )
     embed.set_footer(text=f"Posted by {author} • {simplified_time}")
 
-    # Set image
-    # image_url = "https://images-ext-1.discordapp.net/external/vEu93IBiGC0IkfvvM8qEG1BQAMW48Yb7hxPohiY4Kzo/https/blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEgM3omq_vH_U9a7yb-2B6bPkxkunGCB-GzGc6kY-KtACdDZ1EkzRNX4Ghr1yWU4kpPGfbUPIaxHuOe6S6rZ4X8RIHC7sU5V-s9o_1J83WR-0NwfPrbOJn05RwGxCGmzjGTsLwpKXg_S9e5LM7PbIyvOjK2eUrR6iGHK_928fBJdyyF1np_xUbAMkLAd/s1600/20230415_100900.jpg?format=webp&width=1022&height=377"
-    # embed.set_image(url=image_url)  # Gambar besar di dalam embed
-
-    # Buat tombol
     button1 = discord.ui.Button(label="Baca Sekarang", url=link, style=discord.ButtonStyle.link)
     button2 = discord.ui.Button(label="Visit Site", url="https://ainzscans.net/", style=discord.ButtonStyle.link)
 
-    # Buat view dengan tombol
     view = discord.ui.View()
     view.add_item(button1)
     view.add_item(button2)
 
-    # Tentukan mention role berdasarkan title
-    role_mention = get_role_mention(title)
-
-    channel = bot.get_channel(int(os.getenv('CHANNEL_ID')))
+    channel = bot.get_channel(int(os.getenv('TARGET_CHANNEL_ID')))  # Ganti dengan CHANNEL_ID target
     if channel:
         try:
             await channel.send(content=f"{role_mention} Read Now!", embed=embed, view=view)
