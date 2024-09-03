@@ -98,7 +98,7 @@
         },
         {
             "id": "17",
-            "title": "The Nebula's Civilization",
+            "title": "The Nebula\u2019s Civilization",
             "role": "<@&1183812217926320263><@&1176850935117516840>",
             "category": "TNC"
         },
@@ -320,7 +320,7 @@
         },
         {
             "id": "54",
-            "title": ">Overlord of Insects",
+            "title": "Overlord of Insects",
             "role": "<@&1223736970061021204><@&1176850935117516840>",
             "category": "OOI"
         },
@@ -377,6 +377,24 @@
             "title": "Invincible After Shocking My Empress Wife",
             "role": "<@&1205762485471289344><@&1176850935117516840>",
             "category": "IASMEW"
+        },
+        {
+            "id": "65",
+            "title": "Rebirth of a Dark Mage: Unveiling a Zombie Planet from the Start",
+            "role": "<@&1279660467270324254><@&1176850935117516840>",
+            "category": "ROADM:UAZPFTS"
+        },
+        {
+            "id": "66",
+            "title": "Serpent Ancestor",
+            "role": "<@&1279659999223742511><@&1176850935117516840>",
+            "category": "SA"
+        },
+        {
+            "id": "67",
+            "title": "Return of the SSS-Class Assassin",
+            "role": "<@&1279620552838873222><@&1176850935117516840>",
+            "category": "ROTSSSCA"
         }
     ]
 }
