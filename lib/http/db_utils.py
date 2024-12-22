@@ -114,3 +114,30 @@ def delete_pending_entry(entry_id: int):
             conn.close()
     else:
         logging.error("No database connection available")
+
+def delete_old_entries():
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            # Hapus entri yang lebih dari 3 hari dari pending_entries
+            cursor.execute('''
+                DELETE FROM pending_entries 
+                WHERE published < NOW() - INTERVAL 3 DAY
+            ''')
+            logging.info("Deleted old entries from pending_entries")
+
+            # Hapus entri yang lebih dari 3 hari dari entries
+            cursor.execute('''
+                DELETE FROM entries 
+                WHERE published < NOW() - INTERVAL 3 DAY
+            ''')
+            logging.info("Deleted old entries from entries")
+            
+            conn.commit()
+        except pymysql.MySQLError as e:
+            logging.error(f"Failed to delete old entries: {e}")
+        finally:
+            conn.close()
+    else:
+        logging.error("No database connection available")

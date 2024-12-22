@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 from .utils import send_to_discord, get_role_mention
 from .logging_config import setup_logging
 from .commands import setup as setup_commands
-from lib.http.db_utils import fetch_pending_entries, delete_pending_entry, get_last_entry_id, set_last_entry_id
+from lib.http.db_utils import fetch_pending_entries, delete_pending_entry, delete_old_entries, set_last_entry_id
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -18,13 +18,12 @@ setup_logging()
 # Inisialisasi bot dengan AutoShardedBot
 intents = discord.Intents.default()
 intents.message_content = True
-intents.messages = True  # Add intents to receive messages
 bot = commands.AutoShardedBot(command_prefix='!', intents=intents)
 
 # Setup custom commands
 setup_commands(bot)
 
-@tasks.loop(minutes=1)
+@tasks.loop(minutes=2)
 async def check_pending_entries():
     logging.info("Checking for pending entries...")
     pending_entries = fetch_pending_entries()
@@ -42,6 +41,7 @@ async def check_pending_entries():
         if role_mention:
             await send_to_discord(bot, entry_id, title, link, published, author)
             delete_pending_entry(entry_id)
+            delete_old_entries()
         else:
             logging.info(f"Role for '{title}' not found yet. Will retry later.")
 
