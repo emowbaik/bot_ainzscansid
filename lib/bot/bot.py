@@ -45,7 +45,6 @@ async def check_pending_entries():
         else:
             logging.info(f"Role for '{title}' not found yet. Will retry later.")
 
-# Event handler untuk menerima pesan dari bot lain
 @bot.event
 async def on_message(message):
     # Jangan merespon pesan dari diri sendiri
@@ -71,6 +70,11 @@ async def on_message(message):
 
             # Simpan entri ke database
             set_last_entry_id(entry_id, published, title, link, author)
+
+    # Izinkan bot memproses perintah jika bukan dari bot lain
+    if not message.author.bot:
+        await bot.process_commands(message)
+
 
 @bot.event
 async def on_ready():

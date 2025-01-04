@@ -1,161 +1,108 @@
 import asyncio
 import logging
-import discord
-import json
+import feedparser
 from discord.ext import commands
 from .utils import send_to_discord
-from lib.http.db_utils import fetch_pending_entries, save_pending_entry
 from dotenv import load_dotenv
 import os
+import pymysql
 
 # Load environment variables
 load_dotenv()
 
-# Path to the roles.json file
-ROLES_JSON_PATH = 'roles.json'
+# Fungsi untuk mengambil feed RSS
+async def fetch_feed(url):
+    return feedparser.parse(url)
 
-# Fetch messages function
-async def fetch_messages(bot, channel_id, limit=100):
-    channel = bot.get_channel(channel_id)
-    messages = await channel.history(limit=limit).flatten()
-    return messages
-
-# Load roles from roles.json
-def load_roles():
+# Fungsi untuk menyimpan laporan ke database
+def save_report_to_db(reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name):
     try:
-        with open(ROLES_JSON_PATH, 'r', encoding='utf-8') as file:
-            roles = json.load(file)
-        return roles
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logging.error(f"Error loading roles.json: {e}")
-        return {"entries": []}
-
-# Save roles to roles.json
-def save_roles(roles_data):
-    try:
-        with open(ROLES_JSON_PATH, 'w', encoding='utf-8') as file:
-            json.dump(roles_data, file, ensure_ascii=False, indent=4)
+        conn = pymysql.connect(
+            host=os.getenv("DB_HOST"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            db=os.getenv("DB_NAME"),
+            charset='utf8mb4'
+        )
+        cursor = conn.cursor()
+        cursor.execute(
+            '''
+            INSERT INTO project_reports 
+            (reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name) 
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''',
+            (reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name)
+        )
+        conn.commit()
+        conn.close()
     except Exception as e:
-        logging.error(f"Error saving roles.json: {e}")
+        logging.error(f"Error saving report to DB: {e}")
 
-# Get the next available ID
-def get_next_id(roles_data):
-    if roles_data['entries']:
-        last_id = int(roles_data['entries'][-1]['id'])
-        return str(last_id + 1)
-    return "1"  # Start with ID 1 if no entries exist
-
-# Add a new entry to roles.json
-def add_entry(title, role_id, category):
-    roles_data = load_roles()
-
-    new_entry = {
-        "id": get_next_id(roles_data),
-        "title": title,
-        "role": role_id,
-        "category": category
-    }
-
-    roles_data['entries'].append(new_entry)
-    save_roles(roles_data)
-
-    logging.info(f"Entry added: {new_entry}")
-    return new_entry
-
+# Setup bot commands
 def setup(bot):
+    # Command untuk menampilkan daftar artikel
     @bot.command(name='list')
     async def list_entries(ctx):
         try:
-            messages = await fetch_messages(int(os.getenv('SOURCE_CHANNEL_ID')))
-            entries = []
+            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
+            entries = feed.entries[:10]  # Ambil 10 artikel terbaru
 
-            for message in messages:
-                lines = message.content.split('\n')
-                if len(lines) >= 4:
-                    title = lines[0]
-                    link = lines[1]
-                    author = lines[2]
-                    published = lines[3]
-                    entry_id = lines[4]
-                    if entry_id not in [e[0] for e in fetch_pending_entries()]:
-                        entries.append((title, link, published, author, entry_id))
-            
             if not entries:
                 await ctx.send("Tidak ada artikel yang ditemukan.")
                 return
 
-            entry_list = "\n".join([f"{i+1}. {entry[0]}" for i, entry in enumerate(entries)])
+            entry_list = "\n".join([f"{i+1}. {entry.title}" for i, entry in enumerate(entries)])
             await ctx.send(f"Daftar artikel:\n{entry_list}\n\nGunakan perintah `!send <nomor>` untuk mengirim artikel yang dipilih.")
 
         except Exception as e:
-            logging.error(f"Error fetching messages: {e}")
+            logging.error(f"Error fetching feed: {e}")
             await ctx.send(f"Terjadi kesalahan: {e}")
 
+    # Command untuk mengirim artikel tertentu
     @bot.command(name='send')
     async def send_entry(ctx, index: int):
         try:
-            messages = await fetch_messages(int(os.getenv('SOURCE_CHANNEL_ID')))
-            entries = []
-
-            for message in messages:
-                lines = message.content.split('\n')
-                if len(lines) >= 4:
-                    title = lines[0]
-                    link = lines[1]
-                    author = lines[2]
-                    published = lines[3]
-                    entry_id = lines[4]
-                    if entry_id not in [e[0] for e in fetch_pending_entries()]:
-                        entries.append((title, link, published, author, entry_id))
-            
+            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
+            entries = feed.entries[:10]  # Ambil 10 artikel terbaru
+    
             if index < 1 or index > len(entries):
                 await ctx.send("Nomor artikel tidak valid.")
                 return
-
+    
             entry = entries[index - 1]
-            title, link, published, author, entry_id = entry
-
-            # Kirim pesan ke Discord
+            title = entry.title
+            link = entry.link
+            author = entry.author if 'author' in entry else 'Unknown'
+            published = entry.published if 'published' in entry else 'Unknown'
+    
+            # Contoh pemanggilan send_to_discord
             await send_to_discord(bot, title, link, published, author)
             logging.info(f"Successfully sent notification for: {title}")
-
-            # Simpan entri ke database
-            save_pending_entry(entry_id, published, title, link, author)
             await ctx.send(f"Artikel '{title}' telah dikirim ke Discord.")
     
         except Exception as e:
             logging.error(f"Error sending entry: {e}")
             await ctx.send(f"Terjadi kesalahan: {e}")
 
+    # Command untuk mengirim semua artikel
     @bot.command(name='sendall')
     async def send_all_entries(ctx):
         try:
-            messages = await fetch_messages(int(os.getenv('SOURCE_CHANNEL_ID')))
-            entries = []
-
-            for message in messages:
-                lines = message.content.split('\n')
-                if len(lines) >= 4:
-                    title = lines[0]
-                    link = lines[1]
-                    author = lines[2]
-                    published = lines[3]
-                    entry_id = lines[4]
-                    if entry_id not in [e[0] for e in fetch_pending_entries()]:
-                        entries.append((title, link, published, author, entry_id))
-            
+            feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
+            entries = feed.entries[:10]  # Ambil 10 artikel terbaru
+    
             if not entries:
                 await ctx.send("Tidak ada artikel yang ditemukan untuk dikirim.")
                 return
-
+    
             for entry in entries:
-                title, link, published, author, entry_id = entry
-
+                title = entry.title
+                link = entry.link
+                author = entry.author if 'author' in entry else 'Unknown'
+                published = entry.published if 'published' in entry else 'Unknown'
+    
                 await send_to_discord(bot, title, link, published, author)
                 logging.info(f"Successfully sent notification for: {title}")
-
-                # Simpan entri ke database
-                save_pending_entry(entry_id, published, title, link, author)
 
             await ctx.send("Semua artikel telah dikirim ke Discord.")
     
@@ -163,31 +110,59 @@ def setup(bot):
             logging.error(f"An error occurred while sending all entries: {e}")
             await ctx.send(f"Terjadi kesalahan: {e}")
 
-    @bot.command(name='addrole')
-    # @commands.has_permissions(administrator=True)  # Ensure only admins can use this command
-    async def add_role(ctx, title: str, role_id: int, category: str):
+    # Command untuk memberi laporan proyek selesai
+    @bot.command(name='lapor')
+    async def lapor(ctx, nama_channel: str, role_tugas: discord.Role, tag_default: discord.Member):
         try:
-            roles = load_roles()
-            if any(entry['role'] == str(role_id) for entry in roles['entries']):
-                await ctx.send(f"Peran dengan ID {role_id} sudah ada.")
-            else:
-                new_entry = add_entry(title, role_id, category)
-                await ctx.send(f"Peran '{new_entry['title']}' berhasil ditambahkan dengan ID {new_entry['role']}.")
-        except Exception as e:
-            logging.error(f"Error adding role: {e}")
-            await ctx.send(f"Terjadi kesalahan: {e}")
+            # Validasi nama channel
+            if not nama_channel.startswith("#"):
+                await ctx.send("Format `nama-channel` salah. Harus diawali dengan `#`.")
+                return
 
-    @bot.command(name='halo')
+            # Ambil channel dari nama
+            channel_name = nama_channel.lstrip("#")
+            target_channel = discord.utils.get(ctx.guild.text_channels, name=channel_name)
+
+            if not target_channel:
+                await ctx.send(f"Channel `{channel_name}` tidak ditemukan.")
+                return
+
+            # Simpan laporan ke database
+            save_report_to_db(ctx.author.id, ctx.author.name, nama_channel,
+                              role_tugas.id, role_tugas.name,
+                              tag_default.id, tag_default.name)
+
+            # Kirim laporan ke channel target
+            laporan = (
+                f"**Laporan Proyek Selesai:**\n"
+                f"Channel: {nama_channel}\n"
+                f"Role: {role_tugas.mention}\n"
+                f"Tag Default: {tag_default.mention}\n"
+                f"Reporter: {ctx.author.mention}"
+            )
+            await target_channel.send(laporan)
+
+            # Konfirmasi ke pengguna yang melapor
+            await ctx.send(f"Laporan berhasil dikirim ke {nama_channel} dan disimpan ke database.")
+
+        except Exception as e:
+            logging.error(f"Error saat mengirim laporan: {e}")
+            await ctx.send("Terjadi kesalahan saat memproses laporan. Pastikan format sudah benar.")
+
+    # Command untuk menyapa pengguna
+    @bot.command(name='hi')
     async def halo(ctx):
         intro_message = (
             "Halo! Saya adalah bot yang dirancang untuk membantu mengirimkan notifikasi "
             "artikel terbaru dari RSS feed ke Discord. Anda bisa menggunakan command berikut:\n\n"
             "1. `!list` - Untuk menampilkan daftar artikel terbaru.\n"
             "2. `!send <nomor>` - Untuk mengirim artikel tertentu ke Discord.\n"
-            "3. `!sendall` - Untuk mengirim semua artikel terbaru ke Discord.\n\n"
+            "3. `!sendall` - Untuk mengirim semua artikel terbaru ke Discord.\n"
+            "4. `!lapor` - Untuk melaporkan proyek yang telah selesai.\n\n"
             "Terima kasih telah menggunakan saya! 😊"
         )
         await ctx.send(intro_message)
 
-# def setup_commands(bot):
-#     setup(bot)
+# Setup commands untuk bot
+def setup_commands(bot):
+    setup(bot)

@@ -461,6 +461,30 @@
       "title": "The Haunted City - Snake Land",
       "role": "<@&1314231731259310080><@&1176850935117516840>",
       "category": "THC"
+    },
+    {
+      "id": "79",
+      "title": "The End of the World is Just a Game to Me",
+      "role": "<@&1324870687663591464><@&1176850935117516840>",
+      "category": "TEWJGM"
+    },
+    {
+      "id": "80",
+      "title": "Disciple of the Three Kings",
+      "role": "<@&1324870985060581386><@&1176850935117516840>",
+      "category": "DTK"
+    },
+    {
+      "id": "81",
+      "title": "Somebody Stop the Pope",
+      "role": "<@&1324871114140160103><@&1176850935117516840>",
+      "category": "SSP"
+    },
+    {
+      "id": "82",
+      "title": "Global Beast Tamer: I Can See the Path of Evolution",
+      "role": "<@&1324871194846953533><@&1176850935117516840>",
+      "category": "GBT:ICSPE"
     }
   ]
 }
