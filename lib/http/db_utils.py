@@ -12,6 +12,30 @@ def format_datetime(date_string: str) -> str:
     except ValueError as e:
         logging.error(f"Date format error: {date_string} - {e}")
         return None
+    
+def setup_database():
+    """Setup tabel di database jika belum ada."""
+    connection = get_db_connection()
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS project_reports (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                channel_id BIGINT NOT NULL,
+                channel_name VARCHAR(255) NOT NULL,
+                user_id BIGINT NOT NULL,
+                user_name VARCHAR(255) NOT NULL,
+                role_id BIGINT NOT NULL,
+                role_name VARCHAR(255) NOT NULL,
+                chapter VARCHAR(255) NOT NULL,
+                owner_id BIGINT NOT NULL,
+                owner_name VARCHAR(255) NOT NULL,
+                reporter_id BIGINT NOT NULL,
+                reporter_name VARCHAR(255) NOT NULL,
+                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        connection.commit()
+    connection.close()
 
 # Fungsi untuk mendapatkan last_entry_id dari database
 def get_last_entry_id() -> int:
@@ -115,11 +139,12 @@ def delete_pending_entry(entry_id: int):
     else:
         logging.error("No database connection available")
 
-def delete_old_entries():
+def delete_old():
     conn = get_db_connection()
     if conn:
         try:
             cursor = conn.cursor()
+            
             # Hapus entri yang lebih dari 3 hari dari pending_entries
             cursor.execute('''
                 DELETE FROM pending_entries 
@@ -133,6 +158,13 @@ def delete_old_entries():
                 WHERE published < NOW() - INTERVAL 3 DAY
             ''')
             logging.info("Deleted old entries from entries")
+
+            # Reset tabel project_reports setiap 2 bulan
+            cursor.execute('''
+                DELETE FROM project_reports
+                WHERE reported_at < NOW() - INTERVAL 2 MONTH
+            ''')
+            logging.info("Deleted old entries from project_reports")
             
             conn.commit()
         except pymysql.MySQLError as e:
@@ -141,3 +173,52 @@ def delete_old_entries():
             conn.close()
     else:
         logging.error("No database connection available")
+
+
+def save_project_report(
+    channel_id, channel_name, user_id, user_name,
+    role_id, role_name, chapter, owner_id, owner_name,
+    reporter_id, reporter_name
+):
+    """Simpan laporan proyek ke database."""
+    connection = get_db_connection()
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            INSERT INTO project_reports (
+                channel_id, channel_name, user_id, user_name,
+                role_id, role_name, chapter, owner_id, owner_name,
+                reporter_id, reporter_name
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            channel_id, channel_name, user_id, user_name,
+            role_id, role_name, chapter, owner_id, owner_name,
+            reporter_id, reporter_name
+        ))
+        connection.commit()
+    connection.close()
+
+def get_project_reports(bulan):
+    """
+    Fetch project reports for a specific month from the database.
+    :param bulan: The month (integer) to filter reports.
+    :return: List of reports.
+    """
+    conn = get_db_connection()
+    if not conn:
+        return []
+
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        query = '''
+            SELECT *
+            FROM project_reports
+            WHERE MONTH(reported_at) = %s
+        '''
+        cursor.execute(query, (bulan,))
+        reports = cursor.fetchall()
+        return reports
+    except pymysql.MySQLError as e:
+        print(f"Database error: {e}")
+        return []
+    finally:
+        conn.close()

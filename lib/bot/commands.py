@@ -1,11 +1,15 @@
+import os
+import discord
 import asyncio
 import logging
+import openpyxl
 import feedparser
-from discord.ext import commands
-from .utils import send_to_discord
 from dotenv import load_dotenv
-import os
-import pymysql
+from discord import app_commands
+from discord.ext import commands
+from .utils import generate_excel_report, send_to_discord
+from lib.http.db_utils import save_project_report, get_project_reports
+from openpyxl.utils import get_column_letter
 
 # Load environment variables
 load_dotenv()
@@ -14,29 +18,9 @@ load_dotenv()
 async def fetch_feed(url):
     return feedparser.parse(url)
 
-# Fungsi untuk menyimpan laporan ke database
-def save_report_to_db(reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name):
-    try:
-        conn = pymysql.connect(
-            host=os.getenv("DB_HOST"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            db=os.getenv("DB_NAME"),
-            charset='utf8mb4'
-        )
-        cursor = conn.cursor()
-        cursor.execute(
-            '''
-            INSERT INTO project_reports 
-            (reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ''',
-            (reporter_id, reporter_name, channel_name, role_id, role_name, default_tag_id, default_tag_name)
-        )
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        logging.error(f"Error saving report to DB: {e}")
+class ReportCommands(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
 
 # Setup bot commands
 def setup(bot):
@@ -110,45 +94,6 @@ def setup(bot):
             logging.error(f"An error occurred while sending all entries: {e}")
             await ctx.send(f"Terjadi kesalahan: {e}")
 
-    # Command untuk memberi laporan proyek selesai
-    @bot.command(name='lapor')
-    async def lapor(ctx, nama_channel: str, role_tugas: discord.Role, tag_default: discord.Member):
-        try:
-            # Validasi nama channel
-            if not nama_channel.startswith("#"):
-                await ctx.send("Format `nama-channel` salah. Harus diawali dengan `#`.")
-                return
-
-            # Ambil channel dari nama
-            channel_name = nama_channel.lstrip("#")
-            target_channel = discord.utils.get(ctx.guild.text_channels, name=channel_name)
-
-            if not target_channel:
-                await ctx.send(f"Channel `{channel_name}` tidak ditemukan.")
-                return
-
-            # Simpan laporan ke database
-            save_report_to_db(ctx.author.id, ctx.author.name, nama_channel,
-                              role_tugas.id, role_tugas.name,
-                              tag_default.id, tag_default.name)
-
-            # Kirim laporan ke channel target
-            laporan = (
-                f"**Laporan Proyek Selesai:**\n"
-                f"Channel: {nama_channel}\n"
-                f"Role: {role_tugas.mention}\n"
-                f"Tag Default: {tag_default.mention}\n"
-                f"Reporter: {ctx.author.mention}"
-            )
-            await target_channel.send(laporan)
-
-            # Konfirmasi ke pengguna yang melapor
-            await ctx.send(f"Laporan berhasil dikirim ke {nama_channel} dan disimpan ke database.")
-
-        except Exception as e:
-            logging.error(f"Error saat mengirim laporan: {e}")
-            await ctx.send("Terjadi kesalahan saat memproses laporan. Pastikan format sudah benar.")
-
     # Command untuk menyapa pengguna
     @bot.command(name='hi')
     async def halo(ctx):
@@ -162,7 +107,93 @@ def setup(bot):
             "Terima kasih telah menggunakan saya! 😊"
         )
         await ctx.send(intro_message)
+        
+    # Command untuk lapor proyek
+    @bot.tree.command(name="lapor", description="Lapor proyek yang telah selesai.")
+    @app_commands.describe(
+        channel="Nama channel proyek (contoh: #proyek-1)",
+        user="Tag diri sendiri (contoh: @pelapor)",
+        role="Role tugas (contoh: @developer)",
+        chapter="Chapter yang dilaporkan (contoh: Chapter 12)",
+        owner="Owner proyek (contoh: @project-owner)"
+    )
+    async def lapor(
+        interaction: discord.Interaction,
+        channel: discord.TextChannel,  # Channel objek
+        user: discord.Member,          # User objek
+        role: discord.Role,            # Role objek
+        chapter: str,
+        owner: discord.Member          # Owner objek
+    ):
+        try:
+            # Simpan nama dan ID ke database
+            save_project_report(
+                channel_id=channel.id,
+                channel_name=channel.name,  # Nama channel
+                user_id=user.id,
+                user_name=user.name,        # Nama pelapor
+                role_id=role.id,
+                role_name=role.name,        # Nama role
+                chapter=chapter,
+                owner_id=owner.id,
+                owner_name=owner.name,      # Nama owner
+                reporter_id=interaction.user.id,
+                reporter_name=interaction.user.name  # Nama pelapor
+            )
+            
+            # Respon ke pengguna
+            await interaction.response.send_message(
+                f"Proyek berhasil dilaporkan:\n"
+                f"**Channel:** {channel.mention} ({channel.name})\n"
+                f"**Pelapor:** {user.mention} ({user.name})\n"
+                f"**Role Tugas:** {role.mention} ({role.name})\n"
+                f"**Chapter:** {chapter}\n"
+                f"**Owner:** {owner.mention} ({owner.name})",
+                ephemeral=True
+            )
+        except Exception as e:
+            await interaction.response.send_message(
+                f"Terjadi kesalahan saat melaporkan proyek: {e}",
+                ephemeral=True
+            )
+            
+    @commands.command(name="output laporan")
+    async def output_laporan(self, ctx, bulan: str):
+        """
+        Command to generate project reports in Excel format.
+        Usage: /output_laporan bulan januari
+        """
+        # Map bulan ke angka
+        bulan_mapping = {
+            "januari": 1, "februari": 2, "maret": 3, "april": 4,
+            "mei": 5, "juni": 6, "juli": 7, "agustus": 8,
+            "september": 9, "oktober": 10, "november": 11, "desember": 12
+        }
+
+        if bulan.lower() not in bulan_mapping:
+            await ctx.send("Bulan yang dimasukkan tidak valid. Harap gunakan nama bulan dalam Bahasa Indonesia.")
+            return
+
+        bulan_angka = bulan_mapping[bulan.lower()]
+
+        # Fetch reports from the database
+        reports = get_project_reports(bulan_angka)
+
+        if not reports:
+            await ctx.send(f"Tidak ada laporan proyek untuk bulan {bulan.capitalize()}.")
+            return
+
+        # Generate Excel file
+        file_name = f"laporan_proyek_{bulan.lower()}.xlsx"
+        generate_excel_report(reports, file_name)
+
+        # Send the Excel file to the user
+        await ctx.send(file=discord.File(file_name))
+
+        # Remove the file after sending
+        os.remove(file_name)
 
 # Setup commands untuk bot
 def setup_commands(bot):
     setup(bot)
+    bot.add_cog(ReportCommands(bot))

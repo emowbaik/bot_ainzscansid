@@ -6,7 +6,7 @@ from discord.ext import commands, tasks
 from .utils import send_to_discord, get_role_mention
 from .logging_config import setup_logging
 from .commands import setup as setup_commands
-from lib.http.db_utils import fetch_pending_entries, delete_pending_entry, delete_old_entries, set_last_entry_id
+from lib.http.db_utils import fetch_pending_entries, delete_pending_entry, delete_old, set_last_entry_id, setup_database
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -20,8 +20,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.AutoShardedBot(command_prefix='!', intents=intents)
 
-# Setup custom commands
+# Setup commands dan database
 setup_commands(bot)
+setup_database()
 
 @tasks.loop(minutes=2)
 async def check_pending_entries():
@@ -41,7 +42,7 @@ async def check_pending_entries():
         if role_mention:
             await send_to_discord(bot, entry_id, title, link, published, author)
             delete_pending_entry(entry_id)
-            delete_old_entries()
+            delete_old()
         else:
             logging.info(f"Role for '{title}' not found yet. Will retry later.")
 
@@ -76,10 +77,14 @@ async def on_message(message):
         await bot.process_commands(message)
 
 
+# Event ketika bot siap
 @bot.event
 async def on_ready():
-    logging.info(f'Logged in as {bot.user.name}')
-    if not check_pending_entries.is_running():
-        check_pending_entries.start()  # Mulai pengecekan entri yang tertunda secara berkala jika belum berjalan
+    print(f"Bot siap! Login sebagai {bot.user}")
+    try:
+        synced = await bot.tree.sync()  # Sinkronisasi slash commands
+        print(f"Synced {len(synced)} commands.")
+    except Exception as e:
+        print(f"Error syncing commands: {e}")
 
 bot.run(os.getenv('DISCORD_TOKEN'))
