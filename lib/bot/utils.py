@@ -5,11 +5,7 @@ import logging
 import re
 from datetime import datetime
 from dateutil import parser
-from openpyxl import Workbook
-from openpyxl.styles import Alignment
-from fuzzywuzzy import fuzz
 from lib.http.db_utils import save_pending_entry
-from openpyxl.utils import get_column_letter
 
 # Muat data dari file JSON untuk roles
 with open('roles.json') as f:
@@ -80,41 +76,3 @@ async def send_to_discord(bot, entry_id, title, link, published, author):
             logging.error(f"Failed to send message: {e}")
     else:
         logging.error("Channel not found.")
-
-def generate_excel_report(reports, file_name):
-    """
-    Generate an Excel report from project reports data.
-    :param reports: List of reports from the database.
-    :param file_name: Name of the output Excel file.
-    """
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Laporan Proyek"
-
-    # Header
-    headers = ["ID", "Nama Channel", "Role Tugas", "Pelapor", "Owner", "Chapter", "Tanggal Lapor"]
-    ws.append(headers)
-
-    # Center align headers
-    for col_num, _ in enumerate(headers, start=1):
-        col_letter = get_column_letter(col_num)
-        ws[f"{col_letter}1"].alignment = Alignment(horizontal="center", vertical="center")
-
-    # Data rows
-    for report in reports:
-        ws.append([
-            report["id"],
-            report["channel_name"],  # Make sure this column is properly fetched
-            report["role_name"],     # Make sure this column is properly fetched
-            report["reporter_name"], # Make sure this column is properly fetched
-            report["chapter"],
-            report["reported_at"].strftime("%Y-%m-%d %H:%M:%S")
-        ])
-
-    # Auto-adjust column width
-    for column in ws.columns:
-        max_length = max(len(str(cell.value)) for cell in column if cell.value) + 2
-        ws.column_dimensions[column[0].column_letter].width = max_length
-
-    # Save the file
-    wb.save(file_name)

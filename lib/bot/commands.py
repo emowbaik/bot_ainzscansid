@@ -2,14 +2,14 @@ import os
 import discord
 import asyncio
 import logging
-import openpyxl
 import feedparser
 from dotenv import load_dotenv
 from discord import app_commands
 from discord.ext import commands
-from .utils import generate_excel_report, send_to_discord
-from lib.http.db_utils import save_project_report, get_project_reports
-from openpyxl.utils import get_column_letter
+from datetime import datetime
+from .utils import send_to_discord
+from lib.http.db_utils import save_project_report, get_reports_for_month
+from .report_utils import generate_excel_report
 
 # Load environment variables
 load_dotenv()
@@ -18,7 +18,7 @@ load_dotenv()
 async def fetch_feed(url):
     return feedparser.parse(url)
 
-class ReportCommands(commands.Cog):
+class Report(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -157,43 +157,43 @@ def setup(bot):
                 ephemeral=True
             )
             
-    @commands.command(name="output laporan")
-    async def output_laporan(self, ctx, bulan: str):
+    @bot.tree.command(name="output", description="Generate project report in Excel format")
+    async def output_report(interaction: discord.Interaction, bulan: str):
         """
-        Command to generate project reports in Excel format.
-        Usage: /output_laporan bulan januari
+        Generate a project report for a specific month.
+        :param interaction: The interaction object.
+        :param bulan: Month for which the report is generated, e.g., "Januari".
         """
-        # Map bulan ke angka
-        bulan_mapping = {
-            "januari": 1, "februari": 2, "maret": 3, "april": 4,
-            "mei": 5, "juni": 6, "juli": 7, "agustus": 8,
-            "september": 9, "oktober": 10, "november": 11, "desember": 12
-        }
+        try:
+            # Mapping nama bulan ke angka
+            month_mapping = {
+                "januari": 1, "februari": 2, "maret": 3, "april": 4,
+                "mei": 5, "juni": 6, "juli": 7, "agustus": 8,
+                "september": 9, "oktober": 10, "november": 11, "desember": 12
+            }
+            month_number = month_mapping.get(bulan.lower())
+            if not month_number:
+                await interaction.response.send_message("Bulan tidak valid. Gunakan nama bulan dalam bahasa Indonesia.", ephemeral=True)
+                return
 
-        if bulan.lower() not in bulan_mapping:
-            await ctx.send("Bulan yang dimasukkan tidak valid. Harap gunakan nama bulan dalam Bahasa Indonesia.")
-            return
+            # Ambil laporan dari database
+            reports = get_reports_for_month(month_number)
+            if not reports:
+                await interaction.response.send_message(f"Tidak ada laporan untuk bulan {bulan}.", ephemeral=True)
+                return
 
-        bulan_angka = bulan_mapping[bulan.lower()]
+            # Generate laporan Excel
+            filename = f"laporan_{bulan.lower()}_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+            filepath = generate_excel_report(filename, f"Laporan {bulan.capitalize()}", reports)
 
-        # Fetch reports from the database
-        reports = get_project_reports(bulan_angka)
+            # Kirim file ke Discord
+            await interaction.response.send_message(content=f"Laporan untuk bulan {bulan.capitalize()} berhasil dibuat.", file=discord.File(filepath))
 
-        if not reports:
-            await ctx.send(f"Tidak ada laporan proyek untuk bulan {bulan.capitalize()}.")
-            return
-
-        # Generate Excel file
-        file_name = f"laporan_proyek_{bulan.lower()}.xlsx"
-        generate_excel_report(reports, file_name)
-
-        # Send the Excel file to the user
-        await ctx.send(file=discord.File(file_name))
-
-        # Remove the file after sending
-        os.remove(file_name)
+        except Exception as e:
+            await interaction.response.send_message("Terjadi kesalahan saat membuat laporan.", ephemeral=True)
+            raise e
 
 # Setup commands untuk bot
-def setup_commands(bot):
+async def setup_commands(bot):
+    await bot.add_cog(Report(bot))
     setup(bot)
-    bot.add_cog(ReportCommands(bot))

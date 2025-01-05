@@ -196,29 +196,25 @@ def save_project_report(
         ))
         connection.commit()
     connection.close()
-
-def get_project_reports(bulan):
+    
+def get_reports_for_month(month: int):
     """
-    Fetch project reports for a specific month from the database.
-    :param bulan: The month (integer) to filter reports.
-    :return: List of reports.
+    Ambil laporan proyek dari database berdasarkan bulan.
+    :param month: Bulan (1-12).
+    :return: List laporan proyek.
     """
-    conn = get_db_connection()
-    if not conn:
-        return []
-
     try:
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-        query = '''
-            SELECT *
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = """
+            SELECT id, channel_name, user_name, role_name, chapter, owner_name, reporter_name, reported_at
             FROM project_reports
-            WHERE MONTH(reported_at) = %s
-        '''
-        cursor.execute(query, (bulan,))
+            WHERE MONTH(reported_at) = %s AND YEAR(reported_at) = YEAR(CURRENT_DATE())
+        """
+        cursor.execute(query, (month,))
         reports = cursor.fetchall()
-        return reports
-    except pymysql.MySQLError as e:
-        print(f"Database error: {e}")
-        return []
-    finally:
         conn.close()
+        return reports
+    except Exception as e:
+        print(f"Error fetching reports: {e}")
+        return []

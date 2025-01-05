@@ -1,7 +1,6 @@
 import os
 import logging
 import discord
-import asyncio
 from discord.ext import commands, tasks
 from .utils import send_to_discord, get_role_mention
 from .logging_config import setup_logging
@@ -23,6 +22,7 @@ bot = commands.AutoShardedBot(command_prefix='!', intents=intents)
 # Setup commands dan database
 setup_commands(bot)
 setup_database()
+
 
 @tasks.loop(minutes=2)
 async def check_pending_entries():
@@ -82,6 +82,7 @@ async def on_message(message):
 async def on_ready():
     print(f"Bot siap! Login sebagai {bot.user}")
     try:
+        # await bot.load_extension("commands.commands")
         synced = await bot.tree.sync()  # Sinkronisasi slash commands
         print(f"Synced {len(synced)} commands.")
     except Exception as e:
