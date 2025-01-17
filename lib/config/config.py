@@ -46,6 +46,7 @@ async def respon_code_loop():
         # Cek status code
         if response.status_code == 200:
             logging.info(f"Permintaan berhasil! Status code: {response.status_code}")
+            # print(f"Response Body: {response.text}")
         elif 500 <= response.status_code < 600:
             logging.warning(f"Server mengalami masalah. Status code: {response.status_code}")
         else:
