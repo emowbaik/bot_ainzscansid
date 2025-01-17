@@ -1,6 +1,6 @@
 import logging
 import pymysql
-from datetime import datetime
+# from datetime import datetime
 from lib.config.config import get_db_connection
 from dateutil import parser
 
@@ -36,6 +36,45 @@ def setup_database():
         """)
         connection.commit()
     connection.close()
+
+def entry_already_processed(entry_id):
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT entry_id FROM entries WHERE entry_id = %s', (entry_id,))
+            result = cursor.fetchone()
+            return result is not None
+        except pymysql.MySQLError as e:
+            logging.error(f"Failed to check if entry_id {entry_id} is already processed: {e}")
+        finally:
+            conn.close()
+    else:
+        logging.error("No database connection available")
+    return False
+
+def save_processed_entry(entry_id, published, title, link, author):
+    conn = get_db_connection()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            formatted_published = format_datetime(published)
+            if formatted_published:
+                cursor.execute(
+                    '''
+                    INSERT INTO entries (entry_id, published, title, link, author) 
+                    VALUES (%s, %s, %s, %s, %s) 
+                    ON DUPLICATE KEY UPDATE published=%s, title=%s, link=%s, author=%s
+                    ''',
+                    (entry_id, formatted_published, title, link, author, formatted_published, title, link, author)
+                )
+                conn.commit()
+        except pymysql.MySQLError as e:
+            logging.error(f"Failed to save processed entry {entry_id} to database: {e}")
+        finally:
+            conn.close()
+    else:
+        logging.error("No database connection available")
 
 # Fungsi untuk mendapatkan last_entry_id dari database
 def get_last_entry_id() -> int:

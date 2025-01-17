@@ -1,15 +1,11 @@
 import os
-import json
+from datetime import datetime
+from dateutil import parser
 import discord
 import logging
 import re
-from datetime import datetime
-from dateutil import parser
+from fuzzywuzzy import fuzz
 from lib.http.db_utils import save_pending_entry
-
-# Muat data dari file JSON untuk roles
-with open('roles.json') as f:
-    entries_data = json.load(f)
 
 # Fungsi untuk mengubah warna hex menjadi integer
 def hex_to_int(hex_color):
@@ -35,18 +31,43 @@ def extract_series_name(title):
         return match.group(1).strip()
     return title
 
-# Fungsi untuk menentukan role mention berdasarkan title
-def get_role_mention(title):
+# Fungsi untuk menentukan role mention berdasarkan title dari RSS feed
+async def get_role_mention(bot, title):
     series_name = extract_series_name(title)
-    logging.info(f"Extracted series name: {series_name}")
-    for entry in entries_data['entries']:
-        if entry['title'].lower() == series_name.lower():
-            logging.info(f"Found matching series: {entry['title']} with role: {entry['role']}")
-            return entry['role']
-    logging.info(f"No matching series found for: {series_name}")
+    guild = bot.get_guild(int(os.getenv('GUILD_ID')))
+
+    if not guild:
+        logging.error("Guild not found.")
+        return ""
+
+    # Ambil semua role dari guild
+    roles = guild.roles
+
+    # Inisialisasi nilai awal
+    best_match = None
+    highest_score = 0
+
+    for role in roles:
+        # Bersihkan tanda petik dari nama role
+        cleaned_role_name = re.sub(r"[\"'’‘“”]", "", role.name)
+
+        # Skip roles with only one word
+        if len(cleaned_role_name.split()) == 1:
+            continue
+
+        # Hitung skor kecocokan menggunakan fuzzy matching
+        score = fuzz.partial_ratio(series_name.lower(), cleaned_role_name.lower())
+        if score > highest_score:
+            highest_score = score
+            best_match = role
+
+    # Hanya mengembalikan role yang memiliki skor lebih dari 95
+    if best_match and highest_score > 95:
+        return best_match.mention
+
     return ""
 
-# Fungsi untuk mengirim pesan ke Discord dengan dua tombol
+# Fungsi untuk mengirim pesan ke Discord
 async def send_to_discord(bot, entry_id, title, link, published, author):
     role_mention = get_role_mention(title)
     
