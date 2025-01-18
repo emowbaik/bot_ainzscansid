@@ -4,4 +4,4 @@ bot.log
 # Environments
 .env
 venv/
-reports/
+reports/.xlsx
