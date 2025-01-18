@@ -20,15 +20,10 @@ def setup_database():
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_reports (
                 id INT AUTO_INCREMENT PRIMARY KEY,
-                channel_id BIGINT NOT NULL,
-                channel_name VARCHAR(255) NOT NULL,
-                user_id BIGINT NOT NULL,
-                user_name VARCHAR(255) NOT NULL,
-                role_id BIGINT NOT NULL,
-                role_name VARCHAR(255) NOT NULL,
+                judul_name VARCHAR(255) NOT NULL,
                 chapter VARCHAR(255) NOT NULL,
-                owner_id BIGINT NOT NULL,
-                owner_name VARCHAR(255) NOT NULL,
+                tipe_komik VARCHAR(255) NOT NULL,
+                posisi_name VARCHAR(255) NOT NULL,
                 reporter_id BIGINT NOT NULL,
                 reporter_name VARCHAR(255) NOT NULL,
                 reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -215,23 +210,17 @@ def delete_old():
 
 
 def save_project_report(
-    channel_id, channel_name, user_id, user_name,
-    role_id, role_name, chapter, owner_id, owner_name,
-    reporter_id, reporter_name
+    judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
 ):
     """Simpan laporan proyek ke database."""
     connection = get_db_connection()
     with connection.cursor() as cursor:
         cursor.execute("""
             INSERT INTO project_reports (
-                channel_id, channel_name, user_id, user_name,
-                role_id, role_name, chapter, owner_id, owner_name,
-                reporter_id, reporter_name
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
+            ) VALUES (%s, %s, %s, %s, %s, %s)
         """, (
-            channel_id, channel_name, user_id, user_name,
-            role_id, role_name, chapter, owner_id, owner_name,
-            reporter_id, reporter_name
+            judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
         ))
         connection.commit()
     connection.close()
@@ -246,7 +235,7 @@ def get_reports_for_month(month: int):
         conn = get_db_connection()
         cursor = conn.cursor()
         query = """
-            SELECT id, channel_name, user_name, role_name, chapter, owner_name, reporter_name, reported_at
+            SELECT id, judul_name, chapter, tipe_komik, posisi_name, reporter_name, reported_at
             FROM project_reports
             WHERE MONTH(reported_at) = %s AND YEAR(reported_at) = YEAR(CURRENT_DATE())
         """

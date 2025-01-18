@@ -25,7 +25,7 @@ class Report(commands.Cog):
 # Setup bot commands
 def setup(bot):
     # Command untuk menampilkan daftar artikel
-    @bot.command(name='list')
+    @bot.command(name='ls')
     async def list_entries(ctx):
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
@@ -36,14 +36,14 @@ def setup(bot):
                 return
 
             entry_list = "\n".join([f"{i+1}. {entry.title}" for i, entry in enumerate(entries)])
-            await ctx.send(f"Daftar artikel:\n{entry_list}\n\nGunakan perintah `!send <nomor>` untuk mengirim artikel yang dipilih.")
+            await ctx.send(f"Daftar artikel:\n{entry_list}\n\nGunakan perintah `!kirim <nomor>` untuk mengirim artikel yang dipilih.")
 
         except Exception as e:
             logging.error(f"Error fetching feed: {e}")
             await ctx.send(f"Terjadi kesalahan: {e}")
 
     # Command untuk mengirim artikel tertentu
-    @bot.command(name='send')
+    @bot.command(name='kirim')
     async def send_entry(ctx, index: int):
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
@@ -56,11 +56,12 @@ def setup(bot):
             entry = entries[index - 1]
             title = entry.title
             link = entry.link
-            author = entry.author if 'author' in entry else 'Unknown'
-            published = entry.published if 'published' in entry else 'Unknown'
+            author = entry.get('author', 'Unknown')
+            published = entry.get('published', 'Unknown')
+            entry_id = entry.get('id', 'unknown-id')
     
-            # Contoh pemanggilan send_to_discord
-            await send_to_discord(bot, title, link, published, author)
+            # Panggil fungsi send_to_discord dengan argumen lengkap
+            await send_to_discord(bot, entry_id, title, link, published, author)
             logging.info(f"Successfully sent notification for: {title}")
             await ctx.send(f"Artikel '{title}' telah dikirim ke Discord.")
     
@@ -107,56 +108,69 @@ def setup(bot):
             "Terima kasih telah menggunakan saya! 😊"
         )
         await ctx.send(intro_message)
-        
+
+    TIPE_KOMIK = [
+    app_commands.Choice(name="General", value="general"),
+    app_commands.Choice(name="Advance", value="advance"),
+    app_commands.Choice(name="Titah", value="titah"),
+]
+
+    POSISI = [
+    app_commands.Choice(name="Typesetter", value="typesetter"),
+    app_commands.Choice(name="English Translator", value="english translator"),
+    app_commands.Choice(name="China Translator", value="china translator"),
+]
+
     # Command untuk lapor proyek
     @bot.tree.command(name="lapor", description="Lapor proyek yang telah selesai.")
     @app_commands.describe(
-        channel="Nama channel proyek (contoh: #proyek-1)",
-        user="Tag diri sendiri (contoh: @pelapor)",
-        role="Role tugas (contoh: @developer)",
-        chapter="Chapter yang dilaporkan (contoh: Chapter 12)",
-        owner="Owner proyek (contoh: @project-owner)"
+        judul="Nama proyek atau judul komik (contoh: One Piece)",
+        chapter="Kirim satu chapter per laporan (contoh: Chapter 12)",
+        tipe_komik="Pilih tipe komik (contoh: General, Advance, Titah)",
+        posisi="Pilih posisi Anda dalam proyek ini (contoh: Typesetter, English Translator)",
+        tag="Tag seseorang (contoh: @user, @uploader)",
+    )
+    @app_commands.choices(
+        tipe_komik=TIPE_KOMIK,
+        posisi=POSISI
     )
     async def lapor(
         interaction: discord.Interaction,
-        channel: discord.TextChannel,  # Channel objek
-        user: discord.Member,          # User objek
-        role: discord.Role,            # Role objek
+        judul: str,
         chapter: str,
-        owner: discord.Member          # Owner objek
+        tipe_komik: app_commands.Choice[str],
+        posisi: app_commands.Choice[str],
+        tag: discord.Member,
     ):
         try:
-            # Simpan nama dan ID ke database
             save_project_report(
-                channel_id=channel.id,
-                channel_name=channel.name,  # Nama channel
-                user_id=user.id,
-                user_name=user.name,        # Nama pelapor
-                role_id=role.id,
-                role_name=role.name,        # Nama role
+                judul_name=judul,
                 chapter=chapter,
-                owner_id=owner.id,
-                owner_name=owner.name,      # Nama owner
+                tipe_komik=tipe_komik.value,
+                posisi_name=posisi.value,
                 reporter_id=interaction.user.id,
-                reporter_name=interaction.user.name  # Nama pelapor
+                reporter_name=interaction.user.name
             )
-            
-            # Respon ke pengguna
+
             await interaction.response.send_message(
                 f"Proyek berhasil dilaporkan:\n"
-                f"**Channel:** {channel.mention} ({channel.name})\n"
-                f"**Pelapor:** {user.mention} ({user.name})\n"
-                f"**Role Tugas:** {role.mention} ({role.name})\n"
+                f"**Judul:** {judul}\n"
                 f"**Chapter:** {chapter}\n"
-                f"**Owner:** {owner.mention} ({owner.name})",
-                ephemeral=True
+                f"**Tipe Komik:** {tipe_komik.name}\n"
+                f"**Posisi:** {posisi.name}\n"
+                f"**Pelapor:** {interaction.user.mention} ({interaction.user.name})\n"
+                f"**Tag:** {tag.mention} ({tag.name})",
+                ephemeral=False
             )
+
         except Exception as e:
             await interaction.response.send_message(
                 f"Terjadi kesalahan saat melaporkan proyek: {e}",
                 ephemeral=True
             )
-            
+    # logging.exception("Error saat melaporkan proyek.")
+
+    # Command untuk output lapor proyek
     @bot.tree.command(name="output", description="Generate project report in Excel format")
     async def output_report(interaction: discord.Interaction, bulan: str):
         """
@@ -186,10 +200,21 @@ def setup(bot):
             filename = f"laporan_{bulan.lower()}_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
             filepath = generate_excel_report(filename, f"Laporan {bulan.capitalize()}", reports)
 
-            # Kirim file ke Discord
-            await interaction.response.send_message(content=f"Laporan untuk bulan {bulan.capitalize()} berhasil dibuat.", file=discord.File(filepath))
+            try:
+                # Kirim file ke Discord
+                await interaction.response.send_message(
+                content=f"Laporan untuk bulan {bulan.capitalize()} berhasil dibuat.",
+                file=discord.File(filepath)
+                )
+            # os.remove(filepath)  # Hapus file setelah dikirim
+
+            except Exception as e:
+                logging.exception("Error saat mengirim laporan ke Discord.")
+                await interaction.response.send_message("Terjadi kesalahan saat mengirim laporan.", ephemeral=True)
+                raise e
 
         except Exception as e:
+            logging.exception("Error saat membuat laporan.")
             await interaction.response.send_message("Terjadi kesalahan saat membuat laporan.", ephemeral=True)
             raise e
 

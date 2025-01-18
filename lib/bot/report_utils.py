@@ -16,7 +16,7 @@ def generate_excel_report(filename: str, sheet_title: str, data: list):
         sheet.title = sheet_title
 
         # Header kolom
-        headers = ["ID", "Channel Name", "User Name", "Role Name", "Chapter", "Owner Name", "Reporter Name", "Reported At"]
+        headers = ["ID", "Judul Komik", "Chapter", "Tipe Komik", "Posisi", "Username", "Reported At"]
         sheet.append(headers)
 
         # Isi data laporan

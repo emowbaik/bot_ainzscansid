@@ -69,7 +69,7 @@ async def get_role_mention(bot, title):
 
 # Fungsi untuk mengirim pesan ke Discord
 async def send_to_discord(bot, entry_id, title, link, published, author):
-    role_mention = get_role_mention(title)
+    role_mention = await get_role_mention(bot, title)
     
     if not role_mention:
         save_pending_entry(entry_id, published, title, link, author)
@@ -92,7 +92,7 @@ async def send_to_discord(bot, entry_id, title, link, published, author):
     channel = bot.get_channel(int(os.getenv('TARGET_CHANNEL_ID')))  # Ganti dengan CHANNEL_ID target
     if channel:
         try:
-            await channel.send(content=f"{role_mention} Read Now!", embed=embed, view=view)
+            await channel.send(content=f"<@&1176850935117516840> | {role_mention} Read Now!", embed=embed, view=view)
         except discord.DiscordException as e:
             logging.error(f"Failed to send message: {e}")
     else:
