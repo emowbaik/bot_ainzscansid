@@ -26,7 +26,24 @@ class Report(commands.Cog):
 def setup(bot):
     # Command untuk menampilkan daftar artikel
     @bot.command(name='ls')
-    async def list_entries(ctx):
+    async def list_entries(interaction: discord.Interaction, ctx):
+        
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+        
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=30)
             entries = feed.entries[:10]  # Ambil 10 artikel terbaru
@@ -44,7 +61,24 @@ def setup(bot):
 
     # Command untuk mengirim artikel tertentu
     @bot.command(name='kirim')
-    async def send_entry(ctx, index: int):
+    async def send_entry(interaction: discord.Interaction, ctx, index: int):
+        
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+        
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
             entries = feed.entries[:10]  # Ambil 10 artikel terbaru
@@ -71,7 +105,24 @@ def setup(bot):
 
     # Command untuk mengirim semua artikel
     @bot.command(name='sendall')
-    async def send_all_entries(ctx):
+    async def send_all_entries(interaction: discord.Interaction, ctx):
+
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+
         try:
             feed = await asyncio.wait_for(fetch_feed(os.getenv('RSS_URL')), timeout=60)
             entries = feed.entries[:10]  # Ambil 10 artikel terbaru
@@ -142,6 +193,26 @@ def setup(bot):
         posisi: app_commands.Choice[str],
         tag: discord.Member,
     ):
+
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812, #Demon Council
+            1110199421687308349, #✧⁠◝Ejecutivo◜⁠✧
+            989854043507687435, #TS - Ejecutivo
+            989854801019932702 #TL - Ejecutivo
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+
         try:
             save_project_report(
                 judul_name=judul,
@@ -168,7 +239,6 @@ def setup(bot):
                 f"Terjadi kesalahan saat melaporkan proyek: {e}",
                 ephemeral=True
             )
-    # logging.exception("Error saat melaporkan proyek.")
 
     # Command untuk output lapor proyek
     @bot.tree.command(name="output", description="Generate project report in Excel format")
@@ -178,6 +248,23 @@ def setup(bot):
         :param interaction: The interaction object.
         :param bulan: Month for which the report is generated, e.g., "Januari".
         """
+
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+
         try:
             # Mapping nama bulan ke angka
             month_mapping = {
@@ -206,7 +293,7 @@ def setup(bot):
                 content=f"Laporan untuk bulan {bulan.capitalize()} berhasil dibuat.",
                 file=discord.File(filepath)
                 )
-            # os.remove(filepath)  # Hapus file setelah dikirim
+                os.remove(filepath)  # Hapus file setelah dikirim
 
             except Exception as e:
                 logging.exception("Error saat mengirim laporan ke Discord.")
