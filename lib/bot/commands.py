@@ -342,16 +342,12 @@ def setup(bot):
             return
 
         # Format hasil data menjadi string
-        rate_list = "**Daftar Rate:**\n"
+        rate_list = "Daftar Rate:\n"
         for rate in rates:
-            # Pastikan rates adalah list of tuples atau dict yang benar
-            position = rate.get('position', 'Unknown')  # Jika rates berupa dict
-            rate_value = rate.get('rate', 'Unknown')   # Jika rates berupa dict
+            position = rate['position']
+            rate_value = f"{rate['rate']:.1f}k"  # Format rate menjadi 2 desimal, lalu tambahkan 'k'
+            rate_list += f"{position}: {rate_value}\n"
 
-            # Jika rates berupa tuple (position, rate), maka gunakan ini:
-            # position, rate_value = rate
-
-            rate_list += f"- {position}: {rate_value}\n"
         await interaction.response.send_message(rate_list)
 
     # Command untuk add atau update rate setiap posisi
