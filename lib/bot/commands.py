@@ -4,12 +4,13 @@ import asyncio
 import logging
 import feedparser
 from dotenv import load_dotenv
+from typing import Union
 from discord import app_commands
 from discord.ext import commands
 from datetime import datetime
 from .utils import send_to_discord
-from lib.http.db_utils import save_project_report, get_reports_for_month
-from .report_utils import generate_excel_report
+from lib.http.db_utils import save_project_report, get_reports_for_month, upsert_rate, get_all_rates, fetch_reports_by_month, fetch_all_rates
+from .output_utils import generate_output_lapor, generate_output_rate
 
 # Load environment variables
 load_dotenv()
@@ -160,16 +161,10 @@ def setup(bot):
         )
         await ctx.send(intro_message)
 
-    TIPE_KOMIK = [
-    app_commands.Choice(name="General", value="general"),
-    app_commands.Choice(name="Advance", value="advance"),
-    app_commands.Choice(name="Titah", value="titah"),
-]
-
     POSISI = [
-    app_commands.Choice(name="Typesetter", value="typesetter"),
-    app_commands.Choice(name="English Translator", value="english translator"),
-    app_commands.Choice(name="China Translator", value="china translator"),
+    app_commands.Choice(name="Typesetter", value="Typesetter"),
+    app_commands.Choice(name="English Translator", value="English Translator"),
+    app_commands.Choice(name="China Translator", value="China Translator"),
 ]
 
     # Command untuk lapor proyek
@@ -177,21 +172,20 @@ def setup(bot):
     @app_commands.describe(
         judul="Nama proyek atau judul komik (contoh: One Piece)",
         chapter="Kirim satu chapter per laporan (contoh: Chapter 12)",
-        tipe_komik="Pilih tipe komik (contoh: General, Advance, Titah)",
         posisi="Pilih posisi Anda dalam proyek ini (contoh: Typesetter, English Translator)",
         tag="Tag seseorang (contoh: @user, @uploader)",
     )
+
     @app_commands.choices(
-        tipe_komik=TIPE_KOMIK,
         posisi=POSISI
     )
+
     async def lapor(
         interaction: discord.Interaction,
         judul: str,
         chapter: str,
-        tipe_komik: app_commands.Choice[str],
         posisi: app_commands.Choice[str],
-        tag: discord.Member,
+        tag: Union[discord.Member, discord.Role]
     ):
 
         # ID role yang diizinkan
@@ -217,20 +211,29 @@ def setup(bot):
             save_project_report(
                 judul_name=judul,
                 chapter=chapter,
-                tipe_komik=tipe_komik.value,
                 posisi_name=posisi.value,
                 reporter_id=interaction.user.id,
                 reporter_name=interaction.user.name
             )
 
+            # Periksa apakah tag adalah Member atau Role
+            if isinstance(tag, discord.Member):
+                mention = tag.mention  # Mention member
+                tag_type = "staff"
+            elif isinstance(tag, discord.Role):
+                mention = tag.mention  # Mention role
+                tag_type = "role"
+            else:
+                await interaction.response.send_message("Tag yang diberikan tidak valid.", ephemeral=True)
+                return
+
             await interaction.response.send_message(
                 f"Proyek berhasil dilaporkan:\n"
                 f"**Judul:** {judul}\n"
                 f"**Chapter:** {chapter}\n"
-                f"**Tipe Komik:** {tipe_komik.name}\n"
                 f"**Posisi:** {posisi.name}\n"
                 f"**Pelapor:** {interaction.user.mention} ({interaction.user.name})\n"
-                f"**Tag:** {tag.mention} ({tag.name})",
+                f"**Tag {tag_type}:** {mention}",
                 ephemeral=False
             )
 
@@ -241,8 +244,8 @@ def setup(bot):
             )
 
     # Command untuk output lapor proyek
-    @bot.tree.command(name="output", description="Generate project report in Excel format")
-    async def output_report(interaction: discord.Interaction, bulan: str):
+    @bot.tree.command(name="output_lapor", description="Generate project report in Excel format")
+    async def output_lapor(interaction: discord.Interaction, bulan: str):
         """
         Generate a project report for a specific month.
         :param interaction: The interaction object.
@@ -284,26 +287,194 @@ def setup(bot):
                 return
 
             # Generate laporan Excel
-            filename = f"laporan_{bulan.lower()}_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
-            filepath = generate_excel_report(filename, f"Laporan {bulan.capitalize()}", reports)
-
+            filename = f"output_lapor_{bulan.lower()}_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+            filepath = generate_output_lapor(filename, f"Laporan {bulan.capitalize()}", reports)
+            
             try:
                 # Kirim file ke Discord
                 await interaction.response.send_message(
-                content=f"Laporan untuk bulan {bulan.capitalize()} berhasil dibuat.",
+                content=f"Laporan output_lapor untuk bulan {bulan.capitalize()} berhasil dibuat.",
                 file=discord.File(filepath)
                 )
                 os.remove(filepath)  # Hapus file setelah dikirim
 
             except Exception as e:
                 logging.exception("Error saat mengirim laporan ke Discord.")
-                await interaction.response.send_message("Terjadi kesalahan saat mengirim laporan.", ephemeral=True)
+                await interaction.response.send_message(f"Terjadi kesalahan saat mengirim laporan: {e}", ephemeral=True)
                 raise e
 
         except Exception as e:
             logging.exception("Error saat membuat laporan.")
-            await interaction.response.send_message("Terjadi kesalahan saat membuat laporan.", ephemeral=True)
+            await interaction.response.send_message(f"Terjadi kesalahan saat membuat laporan: {e}", ephemeral=True)
             raise e
+
+    # Command untuk list rate setiap posisi
+    @bot.tree.command(name="list_rate", description="list/daftar posisi dan rate")
+    async def list_rate(interaction: discord.Interaction):
+        """
+        Command untuk menampilkan daftar posisi dan rate yang tersimpan di database.
+        """
+        
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+        
+        rates = get_all_rates()
+
+        if rates is None:
+            await interaction.response.send_message("Terjadi kesalahan saat mengambil data.")
+            return
+
+        if not rates:
+            await interaction.response.send_message("Belum ada rate yang tersimpan.")
+            return
+
+        # Format hasil data menjadi string
+        rate_list = "**Daftar Rate:**\n"
+        for rate in rates:
+            # Pastikan rates adalah list of tuples atau dict yang benar
+            position = rate.get('position', 'Unknown')  # Jika rates berupa dict
+            rate_value = rate.get('rate', 'Unknown')   # Jika rates berupa dict
+
+            # Jika rates berupa tuple (position, rate), maka gunakan ini:
+            # position, rate_value = rate
+
+            rate_list += f"- {position}: {rate_value}\n"
+        await interaction.response.send_message(rate_list)
+
+    # Command untuk add atau update rate setiap posisi
+    @bot.tree.command(name="set_rate", description="mengatur atau memperbarui rate staff")
+    async def set_rate(interaction: discord.Interaction, position: str, rate: float):
+        """
+        Command untuk mengatur atau memperbarui rate untuk posisi tertentu.
+        :param interaction: Interaction command.
+        :param position: Nama posisi.
+        :param rate: Nilai rate yang akan diatur.
+        """
+        
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+        
+        # Validasi input
+        if rate <= 0:
+            await interaction.response.send_message("Rate harus bernilai positif.")
+            return
+
+        # Perbarui atau tambah rate
+        success = upsert_rate(position, rate)
+
+        if success:
+            await interaction.response.send_message(f"Rate untuk posisi '{position}' berhasil diatur menjadi {rate}.")
+        else:
+            await interaction.response.send_message("Terjadi kesalahan saat menyimpan data.")
+
+    # Command untuk output rate atau hasil pendapatan
+    @bot.tree.command(name="output_rate", description="Menghasilkan laporan Excel untuk laporan user dalam  bulan tertentu.")
+    async def output_rate(interaction: discord.Interaction, bulan: str):
+        """
+        Menghasilkan file Excel laporan jumlah laporan user dan total pendapatan berdasarkan rate per   posisi.
+        """
+        
+        # ID role yang diizinkan
+        ALLOWED_ROLE_IDS = {
+            969063676734763009, #Supreme Beings
+            969063133115191296, #Lucifer
+            985182357915041812 #Demon Council
+        }
+
+        # Periksa apakah user memiliki salah satu role
+        user_roles = {role.id for role in interaction.user.roles}
+        if not ALLOWED_ROLE_IDS.intersection(user_roles):
+            await interaction.response.send_message(
+                "Anda tidak memiliki role yang diperlukan untuk menggunakan perintah ini.",
+                ephemeral=True
+            )
+            return
+        
+        try:
+            # Mapping nama bulan ke angka
+            month_mapping = {
+                "januari": 1, "februari": 2, "maret": 3, "april": 4,
+                "mei": 5, "juni": 6, "juli": 7, "agustus": 8,
+                "september": 9, "oktober": 10, "november": 11, "desember": 12
+            }
+            month_number = month_mapping.get(bulan.lower())
+            if not month_number:
+                await interaction.response.send_message(
+                    "Bulan tidak valid. Gunakan nama bulan dalam bahasa Indonesia.", ephemeral=True
+                )
+                return
+
+            # Ambil data laporan dari database
+            reports = fetch_reports_by_month(month_number)
+            if not reports:
+                await interaction.response.send_message(
+                    f"Tidak ada laporan ditemukan untuk bulan {bulan}.", ephemeral=True
+                )
+                return
+
+            # Hitung jumlah laporan per user dan total pendapatan
+            user_report_count = {}
+            position_rates = fetch_all_rates()  # Ambil rate posisi dari database
+            total_pendapatan = {}
+
+            for report in reports:
+                reporter_name = report["reporter_name"]
+                posisi_name = report["posisi_name"]
+
+                # Tambahkan jumlah laporan
+                user_report_count[reporter_name] = user_report_count.get(reporter_name, 0) + 1
+
+                # Hitung total pendapatan
+                rate = position_rates.get(posisi_name, 0)  # Default rate 0 jika posisi tidak ditemukan
+                total_pendapatan[reporter_name] = total_pendapatan.get(reporter_name, 0) + rate
+
+            # Buat file Excel
+            filename = f"output_rate_{bulan.lower()}_{datetime.now().strftime('%Y%m%d%H%M%S')}.xlsx"
+            filepath = os.path.join("output", filename)
+
+            # Pastikan folder 'output' ada
+            os.makedirs("output", exist_ok=True)
+            generate_output_rate(filepath, f"Laporan {bulan.capitalize()}", bulan, user_report_count,   total_pendapatan)
+
+            # Kirim file ke Discord
+            await interaction.response.send_message(
+                content=f"Laporan output_rate untuk bulan {bulan.capitalize()} berhasil dibuat.",
+                file=discord.File(filepath)
+            )
+
+            # Hapus file setelah dikirim
+            os.remove(filepath)
+
+        except Exception as e:
+            await interaction.response.send_message(
+                f"Terjadi kesalahan saat membuat laporan: {e}", ephemeral=True
+            )
 
 # Setup commands untuk bot
 async def setup_commands(bot):

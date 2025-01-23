@@ -12,21 +12,31 @@ def format_datetime(date_string: str) -> str:
     except ValueError as e:
         logging.error(f"Date format error: {date_string} - {e}")
         return None
-    
+
 def setup_database():
     """Setup tabel di database jika belum ada."""
     connection = get_db_connection()
     with connection.cursor() as cursor:
+        #tabel project_reports
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS project_reports (
                 id INT AUTO_INCREMENT PRIMARY KEY,
                 judul_name VARCHAR(255) NOT NULL,
                 chapter VARCHAR(255) NOT NULL,
-                tipe_komik VARCHAR(255) NOT NULL,
                 posisi_name VARCHAR(255) NOT NULL,
                 reporter_id BIGINT NOT NULL,
                 reporter_name VARCHAR(255) NOT NULL,
                 reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        #tabel rates
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rates (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                position VARCHAR(255) NOT NULL,
+                rate DECIMAL(10, 2) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
         connection.commit()
@@ -147,7 +157,7 @@ def fetch_pending_entries() -> list:
             cursor = conn.cursor()
             cursor.execute('SELECT entry_id, published, title, link, author FROM pending_entries')
             entries = cursor.fetchall()
-            logging.info(f"Fetched {len(entries)} pending entries")
+            # logging.info(f"Fetched {len(entries)} pending entries")
             return entries
         except pymysql.MySQLError as e:
             logging.error(f"Failed to fetch pending entries: {e}")
@@ -210,17 +220,17 @@ def delete_old():
 
 
 def save_project_report(
-    judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
+    judul_name, chapter, posisi_name, reporter_id, reporter_name
 ):
     """Simpan laporan proyek ke database."""
     connection = get_db_connection()
     with connection.cursor() as cursor:
         cursor.execute("""
             INSERT INTO project_reports (
-                judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
-            ) VALUES (%s, %s, %s, %s, %s, %s)
+                judul_name, chapter, posisi_name, reporter_id, reporter_name
+            ) VALUES (%s, %s, %s, %s, %s)
         """, (
-            judul_name, chapter, tipe_komik, posisi_name, reporter_id, reporter_name
+            judul_name, chapter, posisi_name, reporter_id, reporter_name
         ))
         connection.commit()
     connection.close()
@@ -235,7 +245,7 @@ def get_reports_for_month(month: int):
         conn = get_db_connection()
         cursor = conn.cursor()
         query = """
-            SELECT id, judul_name, chapter, tipe_komik, posisi_name, reporter_name, reported_at
+            SELECT id, judul_name, chapter, posisi_name, reporter_name, reported_at
             FROM project_reports
             WHERE MONTH(reported_at) = %s AND YEAR(reported_at) = YEAR(CURRENT_DATE())
         """
@@ -246,3 +256,80 @@ def get_reports_for_month(month: int):
     except Exception as e:
         print(f"Error fetching reports: {e}")
         return []
+    
+def upsert_rate(position, rate):
+    """
+    Menambahkan atau memperbarui rate untuk posisi tertentu.
+    :param position: Nama posisi.
+    :param rate: Nilai rate yang akan diatur.
+    :return: True jika berhasil, False jika gagal.
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO rates (position, rate)
+                VALUES (%s, %s)
+                ON DUPLICATE KEY UPDATE rate = VALUES(rate)
+                """,
+                (position, rate)
+            )
+            connection.commit()
+            return True
+    except Exception as e:
+        print(f"Error upserting rate: {e}")
+        return False
+    finally:
+        if connection:
+            connection.close()
+
+def get_all_rates():
+    """
+    Mengambil semua data rate dari tabel rates.
+    :return: List tuple (position, rate) atau None jika terjadi kesalahan.
+    """
+    connection = None
+    try:
+        connection = get_db_connection()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT position, rate FROM rates ORDER BY position ASC")
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"Error fetching rates: {e}")
+        return None
+    finally:
+        if connection:
+            connection.close()
+
+def fetch_reports_by_month(month: int):
+    """
+    Mengambil laporan dari database berdasarkan bulan.
+    """
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            query = """
+                SELECT reporter_name, posisi_name
+                FROM project_reports
+                WHERE MONTH(reported_at) = %s
+            """
+            cursor.execute(query, (month,))
+            return cursor.fetchall()
+    finally:
+        connection.close()
+
+def fetch_all_rates():
+    """
+    Mengambil semua rate posisi dari database.
+    """
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            query = "SELECT position, rate FROM rates"
+            cursor.execute(query)
+            result = cursor.fetchall()
+            return {row["position"]: float(row["rate"]) for row in result}
+    finally:
+        connection.close()

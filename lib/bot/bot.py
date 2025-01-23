@@ -99,18 +99,19 @@ async def check_feed():
 @bot.event
 async def on_ready():
     logging.info(f'Logged in as {bot.user.name}')
-    try:
-        # await bot.load_extension("commands.commands")
-        synced = await bot.tree.sync()  # Sinkronisasi slash commands
-        print(f"Synced {len(synced)} commands.")
-    except Exception as e:
-        print(f"Error syncing commands: {e}")
+    await  bot.tree.sync()
 
+    # try:
+    #     synced = await bot.tree.sync()  # Sinkronisasi slash commands
+    #     print(f"Synced {len(synced)} commands.")
+    # except Exception as e:
+    #     print(f"Error syncing commands: {e}")
+
+    if not respon_code_loop.is_running():
+        respon_code_loop.start()
     if not check_feed.is_running():
         check_feed.start()
     if not check_pending_entries.is_running():
         check_pending_entries.start()
-    if not respon_code_loop.is_running():
-        respon_code_loop.start()
 
 bot.run(os.getenv('DISCORD_TOKEN'))

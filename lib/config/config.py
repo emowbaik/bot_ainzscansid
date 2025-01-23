@@ -3,6 +3,7 @@ import os
 import certifi
 import pymysql
 import requests
+import pymysql.cursors
 from discord.ext import tasks
 from dotenv import load_dotenv
 
@@ -22,7 +23,8 @@ def get_db_connection():
             host=os.getenv('DB_HOST'),
             user=os.getenv('DB_USER'),
             password=os.getenv('DB_PASSWORD'),
-            database=os.getenv('DB_NAME')
+            database=os.getenv('DB_NAME'),
+            cursorclass=pymysql.cursors.DictCursor
         )
         # logging.info("Database connection successful")
         return conn
