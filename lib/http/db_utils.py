@@ -1,6 +1,6 @@
 import logging
-import pymysql
-# from datetime import datetime
+import mysql.connector
+from mysql.connector import Error
 from lib.config.config import get_db_connection
 from dateutil import parser
 
@@ -17,26 +17,12 @@ def setup_database():
     """Setup tabel di database jika belum ada."""
     connection = get_db_connection()
     with connection.cursor() as cursor:
-        #tabel project_reports
+        #tabel role_blacklist
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS project_reports (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                judul_name VARCHAR(255) NOT NULL,
-                chapter VARCHAR(255) NOT NULL,
-                posisi_name VARCHAR(255) NOT NULL,
-                reporter_id BIGINT NOT NULL,
-                reporter_name VARCHAR(255) NOT NULL,
-                reported_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        #tabel rates
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS rates (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                position VARCHAR(255) NOT NULL,
-                rate DECIMAL(10, 2) NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            CREATE TABLE IF NOT EXISTS role_blacklist (
+                role_id BIGINT PRIMARY KEY,
+                role_name VARCHAR(255) NOT NULL,
+                added_at DATETIME NOT NULL
             )
         """)
         connection.commit()
@@ -50,7 +36,7 @@ def entry_already_processed(entry_id):
             cursor.execute('SELECT entry_id FROM entries WHERE entry_id = %s', (entry_id,))
             result = cursor.fetchone()
             return result is not None
-        except pymysql.MySQLError as e:
+        except Error.MySQLError as e:
             logging.error(f"Failed to check if entry_id {entry_id} is already processed: {e}")
         finally:
             conn.close()
@@ -67,117 +53,15 @@ def save_processed_entry(entry_id, published, title, link, author):
             if formatted_published:
                 cursor.execute(
                     '''
-                    INSERT INTO entries (entry_id, published, title, link, author) 
-                    VALUES (%s, %s, %s, %s, %s) 
+                    INSERT INTO entries (entry_id, published, title, link, author)
+                    VALUES (%s, %s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE published=%s, title=%s, link=%s, author=%s
                     ''',
                     (entry_id, formatted_published, title, link, author, formatted_published, title, link, author)
                 )
                 conn.commit()
-        except pymysql.MySQLError as e:
+        except Error.MySQLError as e:
             logging.error(f"Failed to save processed entry {entry_id} to database: {e}")
-        finally:
-            conn.close()
-    else:
-        logging.error("No database connection available")
-
-# Fungsi untuk mendapatkan last_entry_id dari database
-def get_last_entry_id() -> int:
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('SELECT entry_id FROM entries ORDER BY published DESC LIMIT 1')
-            result = cursor.fetchone()
-            logging.info(f"Fetched last_entry_id: {result[0] if result else 'None'}")
-            return result[0] if result else None
-        except pymysql.MySQLError as e:
-            logging.error(f"Failed to fetch last_entry_id: {e}")
-        finally:
-            conn.close()
-    else:
-        logging.error("No database connection available")
-    return None
-
-# Fungsi untuk menyimpan entry_id, published, title, link, dan author ke database
-def set_last_entry_id(entry_id: int, published: str, title: str, link: str, author: str):
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            formatted_published = format_datetime(published)
-            if formatted_published:
-                cursor.execute(
-                    '''
-                    INSERT INTO entries (entry_id, published, title, link, author) 
-                    VALUES (%s, %s, %s, %s, %s) 
-                    ON DUPLICATE KEY UPDATE published=%s, title=%s, link=%s, author=%s
-                    ''',
-                    (entry_id, formatted_published, title, link, author, formatted_published, title, link, author)
-                )
-                conn.commit()
-                logging.info(f"Set entry_id {entry_id} with published date {formatted_published}, title {title}, link {link}, and author {author}")
-        except pymysql.MySQLError as e:
-            logging.error(f"Failed to save entry_id {entry_id} to database: {e}")
-        finally:
-            conn.close()
-    else:
-        logging.error("No database connection available")
-
-# Fungsi untuk menyimpan entri yang tertunda ke database
-def save_pending_entry(entry_id: int, published: str, title: str, link: str, author: str):
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            formatted_published = format_datetime(published)
-            if formatted_published:
-                cursor.execute(
-                    '''
-                    INSERT INTO pending_entries (entry_id, published, title, link, author) 
-                    VALUES (%s, %s, %s, %s, %s) 
-                    ON DUPLICATE KEY UPDATE published=%s, title=%s, link=%s, author=%s
-                    ''',
-                    (entry_id, formatted_published, title, link, author, formatted_published, title, link, author)
-                )
-                conn.commit()
-                logging.info(f"Saved pending entry {entry_id}")
-        except pymysql.MySQLError as e:
-            logging.error(f"Failed to save pending entry {entry_id}: {e}")
-        finally:
-            conn.close()
-    else:
-        logging.error("No database connection available")
-
-# Fungsi untuk mengambil entri yang tertunda dari database
-def fetch_pending_entries() -> list:
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('SELECT entry_id, published, title, link, author FROM pending_entries')
-            entries = cursor.fetchall()
-            # logging.info(f"Fetched {len(entries)} pending entries")
-            return entries
-        except pymysql.MySQLError as e:
-            logging.error(f"Failed to fetch pending entries: {e}")
-        finally:
-            conn.close()
-    else:
-        logging.error("No database connection available")
-    return []
-
-# Fungsi untuk menghapus entri yang telah dikirim dari database
-def delete_pending_entry(entry_id: int):
-    conn = get_db_connection()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM pending_entries WHERE entry_id = %s', (entry_id,))
-            conn.commit()
-            logging.info(f"Deleted pending entry {entry_id}")
-        except pymysql.MySQLError as e:
-            logging.error(f"Failed to delete pending entry {entry_id}: {e}")
         finally:
             conn.close()
     else:
@@ -188,17 +72,17 @@ def delete_old():
     if conn:
         try:
             cursor = conn.cursor()
-            
+
             # Hapus entri yang lebih dari 3 hari dari pending_entries
             cursor.execute('''
-                DELETE FROM pending_entries 
+                DELETE FROM pending_entries
                 WHERE published < NOW() - INTERVAL 3 DAY
             ''')
             logging.info("Deleted old entries from pending_entries")
 
             # Hapus entri yang lebih dari 3 hari dari entries
             cursor.execute('''
-                DELETE FROM entries 
+                DELETE FROM entries
                 WHERE published < NOW() - INTERVAL 3 DAY
             ''')
             logging.info("Deleted old entries from entries")
@@ -209,127 +93,57 @@ def delete_old():
                 WHERE reported_at < NOW() - INTERVAL 2 MONTH
             ''')
             logging.info("Deleted old entries from project_reports")
-            
+
             conn.commit()
-        except pymysql.MySQLError as e:
+        except Error.MySQLError as e:
             logging.error(f"Failed to delete old entries: {e}")
         finally:
             conn.close()
     else:
         logging.error("No database connection available")
 
-
-def save_project_report(
-    judul_name, chapter, posisi_name, reporter_id, reporter_name
-):
-    """Simpan laporan proyek ke database."""
-    connection = get_db_connection()
-    with connection.cursor() as cursor:
-        cursor.execute("""
-            INSERT INTO project_reports (
-                judul_name, chapter, posisi_name, reporter_id, reporter_name
-            ) VALUES (%s, %s, %s, %s, %s)
-        """, (
-            judul_name, chapter, posisi_name, reporter_id, reporter_name
-        ))
-        connection.commit()
-    connection.close()
-    
-def get_reports_for_month(month: int):
-    """
-    Ambil laporan proyek dari database berdasarkan bulan.
-    :param month: Bulan (1-12).
-    :return: List laporan proyek.
-    """
+# Fungsi untuk menambahkan role ke dalam daftar blacklist
+def add_role_to_blacklist(role_id, role_name):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         query = """
-            SELECT id, judul_name, chapter, posisi_name, reporter_name, reported_at
-            FROM project_reports
-            WHERE MONTH(reported_at) = %s AND YEAR(reported_at) = YEAR(CURRENT_DATE())
+            INSERT INTO role_blacklist (role_id, role_name, added_at)
+            VALUES (%s, %s, NOW())
+            ON DUPLICATE KEY UPDATE role_name = %s, added_at = NOW()
         """
-        cursor.execute(query, (month,))
-        reports = cursor.fetchall()
+        cursor.execute(query, (role_id, role_name, role_name))
+        conn.commit()
         conn.close()
-        return reports
+        return True
     except Exception as e:
-        print(f"Error fetching reports: {e}")
-        return []
-    
-def upsert_rate(position, rate):
-    """
-    Menambahkan atau memperbarui rate untuk posisi tertentu.
-    :param position: Nama posisi.
-    :param rate: Nilai rate yang akan diatur.
-    :return: True jika berhasil, False jika gagal.
-    """
-    connection = None
-    try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                INSERT INTO rates (position, rate)
-                VALUES (%s, %s)
-                ON DUPLICATE KEY UPDATE rate = VALUES(rate)
-                """,
-                (position, rate)
-            )
-            connection.commit()
-            return True
-    except Exception as e:
-        print(f"Error upserting rate: {e}")
+        logging.error(f"Failed to add role to blacklist: {e}")
         return False
-    finally:
-        if connection:
-            connection.close()
 
-def get_all_rates():
-    """
-    Mengambil semua data rate dari tabel rates.
-    :return: List tuple (position, rate) atau None jika terjadi kesalahan.
-    """
-    connection = None
+# Fungsi untuk menghapus role dari blacklist
+def remove_role_from_blacklist(role_id):
     try:
-        connection = get_db_connection()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT position, rate FROM rates ORDER BY position ASC")
-            return cursor.fetchall()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "DELETE FROM role_blacklist WHERE role_id = %s"
+        cursor.execute(query, (role_id,))
+        conn.commit()
+        conn.close()
+        return True
     except Exception as e:
-        print(f"Error fetching rates: {e}")
-        return None
-    finally:
-        if connection:
-            connection.close()
+        logging.error(f"Failed to remove role from blacklist: {e}")
+        return False
 
-def fetch_reports_by_month(month: int):
-    """
-    Mengambil laporan dari database berdasarkan bulan.
-    """
-    connection = get_db_connection()
+# Fungsi untuk mengecek apakah role ada dalam daftar blacklist
+def is_role_blacklisted(role_id):
     try:
-        with connection.cursor() as cursor:
-            query = """
-                SELECT reporter_name, posisi_name
-                FROM project_reports
-                WHERE MONTH(reported_at) = %s
-            """
-            cursor.execute(query, (month,))
-            return cursor.fetchall()
-    finally:
-        connection.close()
-
-def fetch_all_rates():
-    """
-    Mengambil semua rate posisi dari database.
-    """
-    connection = get_db_connection()
-    try:
-        with connection.cursor() as cursor:
-            query = "SELECT position, rate FROM rates"
-            cursor.execute(query)
-            result = cursor.fetchall()
-            return {row["position"]: float(row["rate"]) for row in result}
-    finally:
-        connection.close()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        query = "SELECT 1 FROM role_blacklist WHERE role_id = %s LIMIT 1"
+        cursor.execute(query, (role_id,))
+        result = cursor.fetchone()
+        conn.close()
+        return result is not None
+    except Exception as e:
+        logging.error(f"Failed to check if role is blacklisted: {e}")
+        return False

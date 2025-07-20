@@ -5,7 +5,7 @@ import discord
 import logging
 import re
 from fuzzywuzzy import fuzz
-from lib.http.db_utils import save_pending_entry
+from lib.http.db_utils import save_pending_entry, is_role_blacklisted
 
 # Fungsi untuk mengubah warna hex menjadi integer
 def hex_to_int(hex_color):
@@ -40,41 +40,42 @@ async def get_role_mention(bot, title):
         logging.error("Guild not found.")
         return ""
 
-    # Ambil semua role dari guild
     roles = guild.roles
-
-    # Inisialisasi nilai awal
     best_match = None
     highest_score = 0
 
     for role in roles:
-        # Bersihkan tanda petik dari nama role
         cleaned_role_name = re.sub(r"[\"'’‘“”]", "", role.name)
 
-        # Skip roles with only one word
-        if len(cleaned_role_name.split()) == 1:
+        if len(cleaned_role_name.split()) == 1 or is_role_blacklisted(role.id):
             continue
 
-        # Hitung skor kecocokan menggunakan fuzzy matching
         score = fuzz.partial_ratio(series_name.lower(), cleaned_role_name.lower())
         if score > highest_score:
             highest_score = score
             best_match = role
 
-    # Hanya mengembalikan role yang memiliki skor lebih dari 95
-    if best_match and highest_score > 95:
+    # Jika cocok, return role yang ditemukan
+    if best_match and highest_score > 99:
+        logging.info(f"Matched existing role: {best_match.name} (score: {highest_score})")
         return best_match.mention
 
-    return ""
+    # Jika tidak ada role cocok, buat role baru
+    try:
+        new_role = await guild.create_role(name=series_name, mentionable=True, reason="Auto-created by Sebas Tian - Iron Butler")
+        logging.info(f"Created new role: {new_role.name}")
+        return new_role.mention
+    except Exception as e:
+        logging.error(f"Failed to create role: {e}")
+        return ""
 
 # Fungsi untuk mengirim pesan ke Discord
-async def send_to_discord(bot, entry_id, title, link, published, author):
+async def send_to_discord(bot, title, link, published, author):
     role_mention = await get_role_mention(bot, title)
-    
     if not role_mention:
-        save_pending_entry(entry_id, published, title, link, author)
+        logging.error("No role mention found, cannot send message.")
         return
-    
+
     simplified_time = simplify_timestamp(published)
     embed = discord.Embed(
         title=title,
